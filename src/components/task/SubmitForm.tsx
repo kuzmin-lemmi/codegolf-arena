@@ -195,12 +195,19 @@ export function SubmitForm({
       {/* Visual code scaffold */}
       <div className="rounded-lg border border-border overflow-hidden">
         {/* Static header - function definition */}
-        <div className="bg-[#1a1f2a] px-4 py-2 border-b border-border/50 font-mono text-sm">
-          <span className="text-[#c586c0]">def</span>{' '}
-          <span className="text-[#dcdcaa]">solution</span>
-          <span className="text-text-muted">(</span>
-          <span className="text-[#9cdcfe]">{functionArgs.join(', ')}</span>
-          <span className="text-text-muted">):</span>
+        <div className="bg-[#1a1f2a] px-4 py-2 border-b border-border/50 font-mono text-sm flex items-center justify-between">
+          <div>
+            <span className="text-[#c586c0]">def</span>{' '}
+            <span className="text-[#dcdcaa]">solution</span>
+            <span className="text-text-muted">(</span>
+            <span className="text-[#9cdcfe]">{functionArgs.join(', ')}</span>
+            <span className="text-text-muted">):</span>
+          </div>
+          <div className="text-text-muted">
+            <span className="text-text-secondary">Длина:</span>{' '}
+            <span className="text-[#9cdcfe] font-bold">{length}</span>
+            <span className="text-text-muted"> символов</span>
+          </div>
         </div>
         
         {/* Return line with editable expression */}
@@ -225,26 +232,28 @@ export function SubmitForm({
         </div>
       </div>
       
-      <div className="text-xs text-text-muted">
-        Пиши только выражение. Длина: <span className="font-mono font-bold text-accent-blue">{length}</span> символов
+      <div className="text-sm text-text-muted">
+        Пиши только выражение — оно подставится после <span className="font-mono">return</span>.
       </div>
 
       {/* Buttons */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          disabled={!canSubmit || isSubmitting}
-          loading={isSubmitting}
-          icon={Send}
-        >
-          {isLoggedIn ? 'Отправить' : 'Отправить (без рейтинга)'}
-        </Button>
+        {isLoggedIn && (
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            loading={isSubmitting}
+            icon={Send}
+          >
+            Отправить в рейтинг
+          </Button>
+        )}
 
         {!isLoggedIn && (
           <Link href="/auth">
             <Button variant="secondary" icon={LogIn}>
-              Войти для рейтинга
+              Войти, чтобы отправить в рейтинг
             </Button>
           </Link>
         )}
@@ -359,7 +368,11 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
       {/* Test details */}
       {result.details && result.details.length > 0 && (
-        <TestDetails details={result.details} />
+        <TestDetails
+          details={result.details}
+          testsTotal={result.testsTotal}
+          testsPassed={result.testsPassed}
+        />
       )}
     </div>
   );
@@ -428,7 +441,11 @@ function LocalCheckResultCard({
 
           {/* Test details */}
           {result.details.length > 0 && (
-            <TestDetails details={result.details} />
+            <TestDetails
+              details={result.details}
+              testsTotal={result.testsTotal}
+              testsPassed={result.testsPassed}
+            />
           )}
         </div>
       </div>
@@ -436,52 +453,123 @@ function LocalCheckResultCard({
   );
 }
 
-function TestDetails({ details }: { details: TestResultDetail[] }) {
-  const [expanded, setExpanded] = useState(false);
+function TestDetails({
+  details,
+  testsTotal,
+  testsPassed,
+}: {
+  details: TestResultDetail[];
+  testsTotal: number;
+  testsPassed: number;
+}) {
+  const [viewMode, setViewMode] = useState<'all' | 'fail'>('all');
+  const [expandedTests, setExpandedTests] = useState<Record<number, boolean>>({});
   const failedTests = details.filter((d) => !d.passed);
-  const showDetails = expanded ? details : failedTests.slice(0, 3);
+  const visibleTests = viewMode === 'all' ? details : failedTests;
+  const hiddenCount = Math.max(0, testsTotal - details.length);
 
   if (details.length === 0) return null;
 
   return (
     <div className="mt-4">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-      >
-        {expanded ? '▼ Скрыть детали' : `▶ Показать детали (${failedTests.length} ошибок)`}
-      </button>
-      
-      {(expanded || failedTests.length > 0) && (
-        <div className="mt-2 space-y-2">
-          {showDetails.map((test) => (
-            <div
-              key={test.index}
-              className={cn(
-                'p-3 rounded-lg text-sm',
-                test.passed ? 'bg-accent-green/5' : 'bg-accent-red/5'
-              )}
-            >
-              <div className="flex items-center gap-2 mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-text-secondary">
+          Тесты: <span className="text-text-primary font-medium">{testsPassed}</span> из{' '}
+          <span className="text-text-primary font-medium">{testsTotal}</span>
+          {hiddenCount > 0 && (
+            <span className="text-text-muted"> · скрытых: {hiddenCount}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('all')}
+            className={cn(
+              'text-xs px-2.5 py-1 rounded-full border transition-colors',
+              viewMode === 'all'
+                ? 'border-accent-blue text-accent-blue bg-accent-blue/10'
+                : 'border-border text-text-muted hover:text-text-primary'
+            )}
+          >
+            Все
+          </button>
+          <button
+            onClick={() => setViewMode('fail')}
+            className={cn(
+              'text-xs px-2.5 py-1 rounded-full border transition-colors',
+              viewMode === 'fail'
+                ? 'border-accent-red text-accent-red bg-accent-red/10'
+                : 'border-border text-text-muted hover:text-text-primary'
+            )}
+          >
+            Только ошибки
+          </button>
+        </div>
+      </div>
+
+      {hiddenCount > 0 && (
+        <div className="mt-2 text-xs text-text-muted">
+          Скрытые тесты проверяются при отправке в рейтинг.
+        </div>
+      )}
+
+      <div className="mt-3 space-y-2">
+        {visibleTests.map((test) => (
+          <div
+            key={test.index}
+            className={cn(
+              'p-3 rounded-lg text-sm border',
+              test.passed
+                ? 'border-accent-green/30 bg-accent-green/5'
+                : 'border-accent-red/30 bg-accent-red/5'
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
                 {test.passed ? (
                   <CheckCircle className="w-4 h-4 text-accent-green" />
                 ) : (
                   <XCircle className="w-4 h-4 text-accent-red" />
                 )}
                 <span className="font-medium">Тест {test.index + 1}</span>
+                <span
+                  className={cn(
+                    'text-xs',
+                    test.passed ? 'text-accent-green' : 'text-accent-red'
+                  )}
+                >
+                  {test.passed ? 'PASS' : 'FAIL'}
+                </span>
               </div>
-              {!test.passed && (
-                <div className="font-mono text-xs text-text-muted mt-1 space-y-0.5">
-                  {test.input && <div>Ввод: {test.input}</div>}
-                  {test.expected && <div>Ожидалось: {test.expected}</div>}
-                  {test.actual && <div>Получено: {test.actual}</div>}
-                  {test.error && <div className="text-accent-red">{test.error}</div>}
-                </div>
+              {(test.passed || test.actual || test.expected) && (
+                <button
+                  onClick={() =>
+                    setExpandedTests((prev) => ({
+                      ...prev,
+                      [test.index]: !prev[test.index],
+                    }))
+                  }
+                  className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                >
+                  {expandedTests[test.index] ? 'Скрыть детали' : 'Показать детали'}
+                </button>
               )}
             </div>
-          ))}
-        </div>
-      )}
+            {test.input && (
+              <div className="font-mono text-xs text-text-muted mt-2">Ввод: {test.input}</div>
+            )}
+            {(!test.passed || expandedTests[test.index]) && (
+              <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
+                {test.expected && <div>Ожидалось: {test.expected}</div>}
+                {test.actual && <div>Получено: {test.actual}</div>}
+                {test.error && <div className="text-accent-red">{test.error}</div>}
+              </div>
+            )}
+          </div>
+        ))}
+        {viewMode === 'fail' && failedTests.length === 0 && (
+          <div className="text-sm text-text-muted">Ошибок нет — все тесты пройдены.</div>
+        )}
+      </div>
     </div>
   );
 }

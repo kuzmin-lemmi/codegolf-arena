@@ -37,6 +37,13 @@ export async function POST(
       );
     }
 
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Войдите, чтобы отправить решение в рейтинг' },
+        { status: 401 }
+      );
+    }
+
     // Находим задачу с тестами
     const task = await prisma.task.findUnique({
       where: { slug: params.slug },
@@ -55,7 +62,7 @@ export async function POST(
     }
 
     // Проверяем rate limit (10 сабмитов/мин/пользователь/задача)
-    const rateLimitKey = currentUser ? currentUser.id : getAnonRateLimitKey(request);
+    const rateLimitKey = currentUser.id;
     const rateLimitResult = checkRateLimit(rateLimitKey, task.id);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
