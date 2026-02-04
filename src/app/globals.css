@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Тёмная тема (по умолчанию) */
+:root {
+  --background: #0d1117;
+  --background-secondary: #161b22;
+  --background-tertiary: #21262d;
+  --border: #30363d;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-red: #f85149;
+  --accent-yellow: #d29922;
+  --accent-purple: #a371f7;
+  --tier-bronze: #cd7f32;
+  --tier-silver: #c0c0c0;
+  --tier-gold: #ffd700;
+}
+
+/* Светлая тема */
+[data-theme="light"] {
+  --background: #ffffff;
+  --background-secondary: #f6f8fa;
+  --background-tertiary: #eaeef2;
+  --border: #d0d7de;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-muted: #8c959f;
+  --accent-blue: #0969da;
+  --accent-green: #1a7f37;
+  --accent-red: #cf222e;
+  --accent-yellow: #9a6700;
+  --accent-purple: #8250df;
+  --tier-bronze: #a05a2c;
+  --tier-silver: #6e7781;
+  --tier-gold: #bf8700;
+}
+
+/* Импорт шрифтов */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* Базовые стили */
+:root {
+  --background: #0d1117;
+  --background-secondary: #161b22;
+  --background-tertiary: #21262d;
+  --border: #30363d;
+  --border-light: #484f58;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-yellow: #d29922;
+  --accent-red: #f85149;
+  --tier-bronze: #cd7f32;
+  --tier-silver: #c0c0c0;
+  --tier-gold: #ffd700;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-text-primary font-sans antialiased;
+  min-height: 100vh;
+}
+
+/* Кастомный скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-border-light;
+}
+
+/* Утилиты для карточек */
+@layer components {
+  .card {
+    @apply bg-background-secondary border border-border rounded-lg;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-border-light hover:shadow-card-hover;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-blue text-white hover:bg-accent-blue/90;
+  }
+
+  .btn-secondary {
+    @apply btn bg-background-tertiary text-text-primary border border-border hover:bg-border/50;
+  }
+
+  .btn-success {
+    @apply btn bg-accent-green text-white hover:bg-accent-green/90;
+  }
+
+  .btn-ghost {
+    @apply btn text-text-secondary hover:text-text-primary hover:bg-background-tertiary;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-background-tertiary border border-border rounded-md text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-bronze {
+    @apply badge bg-tier-bronze/20 text-tier-bronze border border-tier-bronze/30;
+  }
+
+  .badge-silver {
+    @apply badge bg-tier-silver/20 text-tier-silver border border-tier-silver/30;
+  }
+
+  .badge-gold {
+    @apply badge bg-tier-gold/20 text-tier-gold border border-tier-gold/30;
+  }
+}
+
+/* Monaco Editor кастомизация */
+.monaco-editor {
+  border-radius: 0.5rem;
+}
+
+.monaco-editor .overflow-guard {
+  border-radius: 0.5rem;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}

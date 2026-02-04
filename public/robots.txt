@@ -1,0 +1,11 @@
+# Robots.txt for Арена однострочников
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://codegolf.ru/sitemap.xml
+
+# Disallow admin and API
+Disallow: /admin
+Disallow: /api
