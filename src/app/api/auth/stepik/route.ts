@@ -5,8 +5,22 @@ import { getStepikAuthUrl } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const returnTo = searchParams.get('returnTo');
     const authUrl = getStepikAuthUrl();
-    return NextResponse.redirect(authUrl);
+    const response = NextResponse.redirect(authUrl);
+
+    if (returnTo && returnTo.startsWith('/')) {
+      response.cookies.set('arena_return_to', returnTo, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 10 * 60,
+        path: '/',
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('Error starting Stepik auth:', error);
     // Редирект на страницу ошибки

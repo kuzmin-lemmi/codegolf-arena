@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Code2, Shield, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { Card, Button, Input } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 
 type AuthMode = 'login' | 'register';
 
@@ -14,6 +15,9 @@ export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const { login, register } = useAuth();
+  const returnToParam = searchParams.get('returnTo');
+  const returnTo = returnToParam && returnToParam.startsWith('/') ? returnToParam : '/';
   
   const [mode, setMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,26 +34,16 @@ export default function AuthPage() {
     setFormError(null);
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-      const body = mode === 'login' 
-        ? { email, password }
-        : { email, password, nickname };
+      const result = mode === 'login'
+        ? await login(email, password)
+        : await register(email, password, nickname);
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        setFormError(data.error || 'Произошла ошибка');
+      if (!result.success) {
+        setFormError(result.error || 'Произошла ошибка');
         return;
       }
 
-      // Успешно — редирект на главную
-      router.push('/');
+      router.push(returnTo);
       router.refresh();
     } catch (err) {
       setFormError('Ошибка соединения');
@@ -59,7 +53,8 @@ export default function AuthPage() {
   };
 
   const handleStepikLogin = () => {
-    window.location.href = '/api/auth/stepik';
+    const target = returnTo ? `/api/auth/stepik?returnTo=${encodeURIComponent(returnTo)}` : '/api/auth/stepik';
+    window.location.href = target;
   };
 
   return (

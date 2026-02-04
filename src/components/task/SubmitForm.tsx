@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { CodeEditor } from './CodeEditor';
 import { Button } from '@/components/ui';
 import { Send, RotateCcw, Play, CheckCircle, XCircle, Loader2, LogIn, Download } from 'lucide-react';
@@ -63,6 +64,8 @@ export function SubmitForm({
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [localResult, setLocalResult] = useState<LocalCheckResult | null>(null);
+  const pathname = usePathname();
+  const returnTo = encodeURIComponent(pathname);
 
   const { isLoading: pyodideLoading, loadProgress, checkCode } = usePyodide();
 
@@ -251,7 +254,7 @@ export function SubmitForm({
         )}
 
         {!isLoggedIn && (
-          <Link href="/auth">
+          <Link href={`/auth?returnTo=${returnTo}`}>
             <Button variant="secondary" icon={LogIn}>
               Войти, чтобы отправить в рейтинг
             </Button>
@@ -294,6 +297,7 @@ export function SubmitForm({
         <LocalCheckResultCard 
           result={localResult} 
           isLoggedIn={isLoggedIn}
+          returnTo={returnTo}
         />
       )}
     </div>
@@ -380,10 +384,12 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
 function LocalCheckResultCard({ 
   result, 
-  isLoggedIn 
+  isLoggedIn,
+  returnTo,
 }: { 
   result: LocalCheckResult; 
   isLoggedIn: boolean;
+  returnTo: string;
 }) {
   const isPassed = result.status === 'pass';
 
@@ -431,7 +437,7 @@ function LocalCheckResultCard({
               <div className="text-sm text-tier-gold mb-2 font-medium">
                 Хочешь попасть в рейтинг?
               </div>
-              <Link href="/auth">
+              <Link href={`/auth?returnTo=${returnTo}`}>
                 <Button variant="primary" size="sm" icon={LogIn}>
                   Войти или зарегистрироваться
                 </Button>
@@ -462,48 +468,18 @@ function TestDetails({
   testsTotal: number;
   testsPassed: number;
 }) {
-  const [viewMode, setViewMode] = useState<'all' | 'fail'>('all');
-  const [expandedTests, setExpandedTests] = useState<Record<number, boolean>>({});
-  const failedTests = details.filter((d) => !d.passed);
-  const visibleTests = viewMode === 'all' ? details : failedTests;
   const hiddenCount = Math.max(0, testsTotal - details.length);
 
   if (details.length === 0) return null;
 
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-text-secondary">
-          Тесты: <span className="text-text-primary font-medium">{testsPassed}</span> из{' '}
-          <span className="text-text-primary font-medium">{testsTotal}</span>
-          {hiddenCount > 0 && (
-            <span className="text-text-muted"> · скрытых: {hiddenCount}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode('all')}
-            className={cn(
-              'text-xs px-2.5 py-1 rounded-full border transition-colors',
-              viewMode === 'all'
-                ? 'border-accent-blue text-accent-blue bg-accent-blue/10'
-                : 'border-border text-text-muted hover:text-text-primary'
-            )}
-          >
-            Все
-          </button>
-          <button
-            onClick={() => setViewMode('fail')}
-            className={cn(
-              'text-xs px-2.5 py-1 rounded-full border transition-colors',
-              viewMode === 'fail'
-                ? 'border-accent-red text-accent-red bg-accent-red/10'
-                : 'border-border text-text-muted hover:text-text-primary'
-            )}
-          >
-            Только ошибки
-          </button>
-        </div>
+      <div className="text-sm text-text-secondary">
+        Тесты: <span className="text-text-primary font-medium">{testsPassed}</span> из{' '}
+        <span className="text-text-primary font-medium">{testsTotal}</span>
+        {hiddenCount > 0 && (
+          <span className="text-text-muted"> · скрытых: {hiddenCount}</span>
+        )}
       </div>
 
       {hiddenCount > 0 && (
@@ -513,7 +489,7 @@ function TestDetails({
       )}
 
       <div className="mt-3 space-y-2">
-        {visibleTests.map((test) => (
+        {details.map((test) => (
           <div
             key={test.index}
             className={cn(
@@ -523,54 +499,32 @@ function TestDetails({
                 : 'border-accent-red/30 bg-accent-red/5'
             )}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {test.passed ? (
-                  <CheckCircle className="w-4 h-4 text-accent-green" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-accent-red" />
-                )}
-                <span className="font-medium">Тест {test.index + 1}</span>
-                <span
-                  className={cn(
-                    'text-xs',
-                    test.passed ? 'text-accent-green' : 'text-accent-red'
-                  )}
-                >
-                  {test.passed ? 'PASS' : 'FAIL'}
-                </span>
-              </div>
-              {(test.passed || test.actual || test.expected) && (
-                <button
-                  onClick={() =>
-                    setExpandedTests((prev) => ({
-                      ...prev,
-                      [test.index]: !prev[test.index],
-                    }))
-                  }
-                  className="text-xs text-text-muted hover:text-text-primary transition-colors"
-                >
-                  {expandedTests[test.index] ? 'Скрыть детали' : 'Показать детали'}
-                </button>
+            <div className="flex items-center gap-2">
+              {test.passed ? (
+                <CheckCircle className="w-4 h-4 text-accent-green" />
+              ) : (
+                <XCircle className="w-4 h-4 text-accent-red" />
               )}
+              <span className="font-medium">Тест {test.index + 1}</span>
+              <span
+                className={cn(
+                  'text-xs',
+                  test.passed ? 'text-accent-green' : 'text-accent-red'
+                )}
+              >
+                {test.passed ? 'PASS' : 'FAIL'}
+              </span>
             </div>
             <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
               <div>
                 Ввод: {test.input ? `solution(${test.input})` : 'solution()'}
               </div>
               {test.expected && <div>Ожидалось: {test.expected}</div>}
-              {(!test.passed || expandedTests[test.index]) && test.actual && (
-                <div>Получено: {test.actual}</div>
-              )}
-              {(!test.passed || expandedTests[test.index]) && test.error && (
-                <div className="text-accent-red">{test.error}</div>
-              )}
+              {test.actual && <div>Получено: {test.actual}</div>}
+              {test.error && <div className="text-accent-red">{test.error}</div>}
             </div>
           </div>
         ))}
-        {viewMode === 'fail' && failedTests.length === 0 && (
-          <div className="text-sm text-text-muted">Ошибок нет — все тесты пройдены.</div>
-        )}
       </div>
     </div>
   );

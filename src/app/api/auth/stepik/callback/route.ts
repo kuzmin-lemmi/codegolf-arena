@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const returnToCookie = request.cookies.get('arena_return_to')?.value;
+    const returnTo = returnToCookie && returnToCookie.startsWith('/') ? returnToCookie : '/';
 
     // Проверка на ошибки OAuth
     if (error) {
@@ -39,14 +41,22 @@ export async function GET(request: NextRequest) {
     // Создание сессии
     const sessionToken = await createSession(user.id);
 
-    // Устанавливаем cookie и редиректим на главную
-    const response = NextResponse.redirect(new URL('/', request.url));
+    // Устанавливаем cookie и редиректим
+    const response = NextResponse.redirect(new URL(returnTo, request.url));
     
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: SESSION_MAX_AGE,
+      path: '/',
+    });
+
+    response.cookies.set('arena_return_to', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
       path: '/',
     });
 

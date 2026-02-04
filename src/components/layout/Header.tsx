@@ -130,7 +130,10 @@ export function Header() {
                 )}
               </div>
             ) : (
-              <Link href="/auth" className="btn-primary text-sm">
+              <Link
+                href={`/auth?returnTo=${encodeURIComponent(pathname)}`}
+                className="btn-primary text-sm"
+              >
                 Войти
               </Link>
             )}
