@@ -4,42 +4,44 @@
 
 /* Тёмная тема (по умолчанию) */
 :root {
-  --background: #0b0f14;
-  --background-secondary: #111821;
-  --background-tertiary: #17212b;
-  --border: #243041;
-  --border-light: #334155;
-  --text-primary: #eef3f8;
-  --text-secondary: #a6b0bb;
-  --text-muted: #7d8894;
-  --accent-blue: #6aa7ff;
-  --accent-green: #41c47a;
-  --accent-amber: #f0a44b;
-  --accent-yellow: #e0b04f;
-  --accent-red: #f25f5c;
-  --tier-bronze: #cd7f32;
-  --tier-silver: #c0c0c0;
-  --tier-gold: #ffd166;
+  --background: 11 15 20;
+  --background-secondary: 17 24 33;
+  --background-tertiary: 23 33 43;
+  --border: 36 48 65;
+  --border-light: 51 65 85;
+  --text-primary: 238 243 248;
+  --text-secondary: 166 176 187;
+  --text-muted: 125 136 148;
+  --accent-blue: 106 167 255;
+  --accent-green: 65 196 122;
+  --accent-amber: 240 164 75;
+  --accent-yellow: 224 176 79;
+  --accent-red: 242 95 92;
+  --accent-purple: 127 140 255;
+  --tier-bronze: 205 127 50;
+  --tier-silver: 192 192 192;
+  --tier-gold: 255 209 102;
 }
 
 /* Светлая тема */
 [data-theme="light"] {
-  --background: #f6f7fb;
-  --background-secondary: #ffffff;
-  --background-tertiary: #eef1f6;
-  --border: #d9e0ea;
-  --border-light: #c8d2e1;
-  --text-primary: #121722;
-  --text-secondary: #465163;
-  --text-muted: #6e7a8c;
-  --accent-blue: #2f6ef5;
-  --accent-green: #1f9d5a;
-  --accent-amber: #c5741e;
-  --accent-yellow: #9a6b1b;
-  --accent-red: #c63d3a;
-  --tier-bronze: #a05a2c;
-  --tier-silver: #6e7781;
-  --tier-gold: #b07a16;
+  --background: 244 239 231;
+  --background-secondary: 251 247 239;
+  --background-tertiary: 241 234 222;
+  --border: 226 217 204;
+  --border-light: 213 202 187;
+  --text-primary: 46 41 36;
+  --text-secondary: 98 89 79;
+  --text-muted: 132 121 109;
+  --accent-blue: 66 108 145;
+  --accent-green: 67 120 91;
+  --accent-amber: 176 123 55;
+  --accent-yellow: 171 115 46;
+  --accent-red: 172 86 74;
+  --accent-purple: 98 113 138;
+  --tier-bronze: 161 110 69;
+  --tier-silver: 134 137 141;
+  --tier-gold: 186 151 79;
 }
 
 html {
@@ -59,6 +61,49 @@ body {
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 120px),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 120px);
   background-attachment: fixed;
+}
+
+html[data-theme="light"] body {
+  background-image:
+    radial-gradient(900px 500px at 10% -10%, rgba(66, 108, 145, 0.08), transparent 60%),
+    radial-gradient(800px 420px at 90% 0%, rgba(176, 123, 55, 0.06), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(98, 89, 79, 0.03) 0 1px, transparent 1px 140px),
+    repeating-linear-gradient(90deg, rgba(98, 89, 79, 0.02) 0 1px, transparent 1px 140px);
+  background-attachment: fixed;
+}
+
+html[data-theme="light"] .card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(0, 0, 0, 0.02)),
+    rgb(var(--background-secondary));
+}
+
+html[data-theme="light"] .card-gold {
+  border: 1px solid rgba(186, 151, 79, 0.35);
+  background: linear-gradient(135deg, rgba(186, 151, 79, 0.08) 0%, transparent 60%),
+    rgb(var(--background-secondary));
+  box-shadow: 0 0 24px rgba(186, 151, 79, 0.12), 0 0 48px rgba(186, 151, 79, 0.06);
+}
+
+html[data-theme="light"] .result-pass {
+  border: 1px solid rgba(67, 120, 91, 0.35);
+  background: linear-gradient(135deg, rgba(67, 120, 91, 0.1) 0%, rgba(67, 120, 91, 0.03) 50%, transparent 100%),
+    rgb(var(--background-secondary));
+  box-shadow: 0 0 18px rgba(67, 120, 91, 0.12), 0 0 36px rgba(67, 120, 91, 0.06);
+  animation: none;
+}
+
+html[data-theme="light"] .result-fail {
+  border: 1px solid rgba(172, 86, 74, 0.35);
+  background: linear-gradient(135deg, rgba(172, 86, 74, 0.1) 0%, rgba(172, 86, 74, 0.03) 50%, transparent 100%),
+    rgb(var(--background-secondary));
+  box-shadow: 0 0 18px rgba(172, 86, 74, 0.1), 0 0 36px rgba(172, 86, 74, 0.05);
+}
+
+html[data-theme="light"] .result-error {
+  border: 1px solid rgba(176, 123, 55, 0.35);
+  background: linear-gradient(135deg, rgba(176, 123, 55, 0.1) 0%, rgba(176, 123, 55, 0.03) 50%, transparent 100%),
+    rgb(var(--background-secondary));
+  box-shadow: 0 0 16px rgba(176, 123, 55, 0.08);
 }
 
 /* Кастомный скроллбар */
@@ -84,11 +129,33 @@ body {
   .card {
     @apply border border-border rounded-lg;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.02)),
-      var(--background-secondary);
+      rgb(var(--background-secondary));
   }
 
   .card-hover {
     @apply card transition-all duration-200 hover:border-border-light hover:shadow-card-hover;
+  }
+
+  .card-gold {
+    @apply relative overflow-hidden rounded-lg;
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.08) 0%, transparent 60%),
+      rgb(var(--background-secondary));
+    box-shadow: 0 0 40px rgba(255, 209, 102, 0.12), 0 0 80px rgba(255, 209, 102, 0.06);
+  }
+
+  .card-gold::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.6), rgba(255, 209, 102, 0.15), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   .btn {
@@ -135,6 +202,59 @@ body {
   .badge-gold {
     @apply badge bg-tier-gold/20 text-tier-gold border border-tier-gold/30;
   }
+
+  /* Vibrant result cards */
+  .result-pass {
+    @apply relative overflow-hidden rounded-lg;
+    border: 1px solid rgba(65, 196, 122, 0.5);
+    background: linear-gradient(135deg, rgba(65, 196, 122, 0.15) 0%, rgba(65, 196, 122, 0.05) 50%, transparent 100%),
+      rgb(var(--background-secondary));
+    box-shadow: 0 0 30px rgba(65, 196, 122, 0.15), 0 0 60px rgba(65, 196, 122, 0.08);
+  }
+
+  .result-pass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(65, 196, 122, 0.7), rgba(65, 196, 122, 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .result-fail {
+    @apply relative overflow-hidden rounded-lg;
+    border: 1px solid rgba(242, 95, 92, 0.5);
+    background: linear-gradient(135deg, rgba(242, 95, 92, 0.15) 0%, rgba(242, 95, 92, 0.05) 50%, transparent 100%),
+      rgb(var(--background-secondary));
+    box-shadow: 0 0 30px rgba(242, 95, 92, 0.12), 0 0 60px rgba(242, 95, 92, 0.06);
+  }
+
+  .result-fail::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(242, 95, 92, 0.7), rgba(242, 95, 92, 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .result-error {
+    @apply relative overflow-hidden rounded-lg;
+    border: 1px solid rgba(224, 176, 79, 0.5);
+    background: linear-gradient(135deg, rgba(224, 176, 79, 0.12) 0%, rgba(224, 176, 79, 0.04) 50%, transparent 100%),
+      rgb(var(--background-secondary));
+    box-shadow: 0 0 25px rgba(224, 176, 79, 0.1);
+  }
 }
 
 /* Monaco Editor кастомизация */
@@ -173,4 +293,17 @@ body {
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(65, 196, 122, 0.15), 0 0 60px rgba(65, 196, 122, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(65, 196, 122, 0.25), 0 0 80px rgba(65, 196, 122, 0.12);
+  }
+}
+
+.result-pass {
+  animation: glow-pulse 2s ease-in-out infinite;
 }

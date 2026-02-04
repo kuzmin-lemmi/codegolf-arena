@@ -12,6 +12,7 @@ interface CodeEditorProps {
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
+  minimal?: boolean;
 }
 
 export function CodeEditor({
@@ -20,6 +21,7 @@ export function CodeEditor({
   placeholder = 'sum(map(int, s.split()))',
   disabled = false,
   maxLength = 2000,
+  minimal = false,
 }: CodeEditorProps) {
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +80,43 @@ export function CodeEditor({
       textarea.selectionStart = textarea.selectionEnd = start + cleanText.length;
     }, 0);
   }, [value, onChange]);
+
+  // Minimal mode - for inline use in scaffold
+  if (minimal) {
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onPaste={(e) => {
+          e.preventDefault();
+          const text = e.clipboardData.getData('text').replace(/[\n\r]+/g, ' ');
+          const start = e.currentTarget.selectionStart || 0;
+          const end = e.currentTarget.selectionEnd || 0;
+          onChange(value.slice(0, start) + text + value.slice(end));
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        className={cn(
+          'w-full px-3 py-3 bg-transparent resize-none',
+          'text-[#ce9178] placeholder:text-[#6a6a6a]',
+          'focus:outline-none focus:bg-[#252526]',
+          'transition-colors',
+          disabled && 'cursor-not-allowed opacity-50'
+        )}
+        style={{
+          fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
+          fontSize: '14px',
+          fontWeight: 400,
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-3">

@@ -270,7 +270,7 @@ function WeeklyChallengeCard({ challenge }: { challenge: any }) {
   const timeRemaining = formatTimeRemaining(new Date(challenge.endsAt));
 
   return (
-    <Card padding="lg" className="bg-gradient-to-br from-tier-gold/5 to-transparent border-tier-gold/30">
+    <div className="card-gold p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -324,7 +324,7 @@ function WeeklyChallengeCard({ challenge }: { challenge: any }) {
           <ArrowRight className="w-4 h-4" />
         </Button>
       </Link>
-    </Card>
+    </div>
   );
 }
 

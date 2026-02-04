@@ -140,7 +140,7 @@ function AdminCard({
     blue: 'text-accent-blue bg-accent-blue/10',
     gold: 'text-tier-gold bg-tier-gold/10',
     green: 'text-accent-green bg-accent-green/10',
-    purple: 'text-accent-purple bg-accent-purple/10',
+    purple: 'text-accent-amber bg-accent-amber/10',
   };
 
   const content = (

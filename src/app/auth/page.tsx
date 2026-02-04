@@ -67,7 +67,7 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-amber mb-4">
             <Code2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold mb-2">Арена однострочников</h1>

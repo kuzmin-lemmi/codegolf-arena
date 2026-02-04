@@ -104,9 +104,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Task Statement */}
-          <div>
+        <div className="grid lg:grid-cols-2 gap-8 items-start">
+          {/* Left Column - Task Statement (sticky) */}
+          <div className="lg:sticky lg:top-20">
             <Card padding="lg">
               <TaskStatement task={taskData} />
             </Card>

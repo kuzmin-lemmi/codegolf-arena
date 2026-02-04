@@ -192,21 +192,42 @@ export function SubmitForm({
   return (
     <div className="space-y-4">
       {/* Code Editor */}
-      <div className="text-sm text-text-secondary">
-        Вводи только выражение — оно подставится после <span className="font-mono">return</span>.
+      {/* Visual code scaffold */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        {/* Static header - function definition */}
+        <div className="bg-[#1a1f2a] px-4 py-2 border-b border-border/50 font-mono text-sm">
+          <span className="text-[#c586c0]">def</span>{' '}
+          <span className="text-[#dcdcaa]">solution</span>
+          <span className="text-text-muted">(</span>
+          <span className="text-[#9cdcfe]">{functionArgs.join(', ')}</span>
+          <span className="text-text-muted">):</span>
+        </div>
+        
+        {/* Return line with editable expression */}
+        <div className="bg-[#1e1e1e] flex items-stretch">
+          {/* Static return keyword */}
+          <div className="flex-shrink-0 px-4 py-3 font-mono text-sm bg-[#1a1f2a] border-r border-border/50 flex items-center">
+            <span className="text-text-muted select-none">    </span>
+            <span className="text-[#c586c0] select-none">return</span>
+            <span className="text-text-muted select-none ml-1"> </span>
+          </div>
+          
+          {/* Editable expression area */}
+          <div className="flex-1 min-w-0">
+            <CodeEditor
+              value={code}
+              onChange={setCode}
+              disabled={isSubmitting}
+              placeholder="твой код здесь..."
+              minimal
+            />
+          </div>
+        </div>
       </div>
-
-      <div className="rounded-lg border border-border bg-background-tertiary p-3 font-mono text-sm text-text-muted">
-        <div>def solution(s):</div>
-        <div>    return &lt;твой код&gt;</div>
+      
+      <div className="text-xs text-text-muted">
+        Пиши только выражение. Длина: <span className="font-mono font-bold text-accent-blue">{length}</span> символов
       </div>
-
-      <CodeEditor
-        value={code}
-        onChange={setCode}
-        disabled={isSubmitting}
-        placeholder="<твой код>"
-      />
 
       {/* Buttons */}
       <div className="flex flex-wrap items-center gap-3">
@@ -278,28 +299,30 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
   return (
     <div
       className={cn(
-        'p-4 rounded-lg border animate-fade-in',
-        isPassed && 'bg-accent-green/10 border-accent-green/30',
-        isFailed && 'bg-accent-red/10 border-accent-red/30',
-        isError && 'bg-accent-yellow/10 border-accent-yellow/30'
+        'p-5 animate-fade-in',
+        isPassed && 'result-pass',
+        isFailed && 'result-fail',
+        isError && 'result-error'
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {isPassed && (
           <>
-            <CheckCircle className="w-6 h-6 text-accent-green" />
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-green/20 flex items-center justify-center">
+              <CheckCircle className="w-7 h-7 text-accent-green" />
+            </div>
             <div>
-              <div className="font-semibold text-accent-green text-lg">
+              <div className="font-bold text-accent-green text-xl tracking-wide">
                 PASS
                 {result.place && (
-                  <span className="ml-2 text-text-primary">
-                    Ты на {result.place} месте!
+                  <span className="ml-3 text-tier-gold text-lg">
+                    #{result.place} место!
                   </span>
                 )}
               </div>
-              <div className="text-sm text-text-secondary">
-                {result.isNewBest ? 'Новый лучший результат: ' : 'Твой результат: '}
-                <span className="font-mono font-bold text-text-primary">{result.length}</span> символов
+              <div className="text-sm text-text-secondary mt-1">
+                {result.isNewBest ? 'Новый рекорд: ' : 'Результат: '}
+                <span className="font-mono font-bold text-accent-green text-base">{result.length}</span> символов
               </div>
             </div>
           </>
@@ -307,11 +330,13 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
         {isFailed && (
           <>
-            <XCircle className="w-6 h-6 text-accent-red" />
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-red/20 flex items-center justify-center">
+              <XCircle className="w-7 h-7 text-accent-red" />
+            </div>
             <div>
-              <div className="font-semibold text-accent-red text-lg">FAIL</div>
-              <div className="text-sm text-text-secondary">
-                Пройдено тестов: {result.testsPassed} из {result.testsTotal}
+              <div className="font-bold text-accent-red text-xl tracking-wide">FAIL</div>
+              <div className="text-sm text-text-secondary mt-1">
+                Пройдено тестов: <span className="font-mono font-bold text-text-primary">{result.testsPassed}</span> из <span className="font-mono">{result.testsTotal}</span>
               </div>
             </div>
           </>
@@ -319,10 +344,12 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
         {isError && (
           <>
-            <XCircle className="w-6 h-6 text-accent-yellow" />
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-yellow/20 flex items-center justify-center">
+              <XCircle className="w-7 h-7 text-accent-yellow" />
+            </div>
             <div>
-              <div className="font-semibold text-accent-yellow text-lg">Ошибка</div>
-              <div className="text-sm text-text-secondary">
+              <div className="font-bold text-accent-yellow text-xl tracking-wide">Ошибка</div>
+              <div className="text-sm text-text-secondary mt-1">
                 {result.errorMessage || 'Произошла ошибка при выполнении'}
               </div>
             </div>
@@ -350,38 +377,46 @@ function LocalCheckResultCard({
   return (
     <div
       className={cn(
-        'p-4 rounded-lg border animate-fade-in',
-        isPassed ? 'bg-accent-blue/10 border-accent-blue/30' : 'bg-accent-red/10 border-accent-red/30'
+        'p-5 animate-fade-in',
+        isPassed ? 'result-pass' : 'result-fail'
       )}
     >
-      <div className="flex items-start gap-3">
-        {isPassed ? (
-          <CheckCircle className="w-6 h-6 text-accent-blue flex-shrink-0" />
-        ) : (
-          <XCircle className="w-6 h-6 text-accent-red flex-shrink-0" />
-        )}
+      <div className="flex items-start gap-4">
+        <div className={cn(
+          'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
+          isPassed ? 'bg-accent-green/20' : 'bg-accent-red/20'
+        )}>
+          {isPassed ? (
+            <CheckCircle className="w-7 h-7 text-accent-green" />
+          ) : (
+            <XCircle className="w-7 h-7 text-accent-red" />
+          )}
+        </div>
         <div className="flex-1">
-          <div className="font-semibold text-lg">
+          <div className="font-bold text-xl tracking-wide">
             {isPassed ? (
-              <span className="text-accent-blue">Все тесты пройдены!</span>
+              <span className="text-accent-green">Все тесты пройдены!</span>
             ) : (
               <span className="text-accent-red">
-                Пройдено {result.testsPassed} из {result.testsTotal} тестов
+                Пройдено {result.testsPassed} из {result.testsTotal}
               </span>
             )}
           </div>
           
-          <div className="text-sm text-text-secondary mb-2">
-            Длина: <span className="font-mono font-bold text-text-primary">{result.length}</span> символов
+          <div className="text-sm text-text-secondary mt-1">
+            Длина: <span className={cn(
+              'font-mono font-bold text-base',
+              isPassed ? 'text-accent-green' : 'text-text-primary'
+            )}>{result.length}</span> символов
             {result.totalTime > 0 && (
-              <span className="ml-2">• {result.totalTime.toFixed(0)} мс</span>
+              <span className="ml-2 text-text-muted">• {result.totalTime.toFixed(0)} мс</span>
             )}
           </div>
 
           {isPassed && !isLoggedIn && (
-            <div className="mt-3 p-3 bg-background-tertiary rounded-lg">
-              <div className="text-sm text-text-secondary mb-2">
-                🏆 Хочешь попасть в рейтинг?
+            <div className="mt-4 p-3 bg-background-tertiary/50 rounded-lg border border-tier-gold/30">
+              <div className="text-sm text-tier-gold mb-2 font-medium">
+                Хочешь попасть в рейтинг?
               </div>
               <Link href="/auth">
                 <Button variant="primary" size="sm" icon={LogIn}>

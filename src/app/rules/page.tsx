@@ -126,7 +126,7 @@ export default function RulesPage() {
           {/* Подсчёт длины */}
           <section>
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Clock className="w-6 h-6 text-accent-purple" />
+              <Clock className="w-6 h-6 text-accent-amber" />
               Подсчёт длины
             </h2>
             <Card padding="lg">
