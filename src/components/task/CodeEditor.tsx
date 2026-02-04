@@ -55,7 +55,7 @@ export function CodeEditor({
     [onChange]
   );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLElement>) => {
     // Блокируем Enter - не даём создать перенос строки
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -104,8 +104,8 @@ export function CodeEditor({
         autoCapitalize="off"
         className={cn(
           'w-full px-3 py-3 bg-transparent resize-none',
-          'text-[#ce9178] placeholder:text-[#6a6a6a]',
-          'focus:outline-none focus:bg-[#252526]',
+          'text-[rgb(var(--code-inline-text))] placeholder:text-[rgb(var(--code-muted))]',
+          'focus:outline-none focus:bg-[rgb(var(--code-bg))]',
           'transition-colors',
           disabled && 'cursor-not-allowed opacity-50'
         )}
@@ -124,17 +124,17 @@ export function CodeEditor({
       <div
         className={cn(
           'relative rounded-lg overflow-hidden transition-all duration-200',
-          'bg-[#1e1e1e] border',
+          'bg-[rgb(var(--code-bg))] border border-[rgb(var(--code-border))]',
           isFocused
-            ? 'border-[#007acc] ring-1 ring-[#007acc]/50'
-            : 'border-[#3c3c3c] hover:border-[#4c4c4c]',
-          !validation.valid && value && 'border-[#f14c4c]',
+            ? 'border-[rgb(var(--code-focus))] ring-1 ring-[rgb(var(--code-focus))]/40'
+            : 'hover:border-[rgb(var(--border-light))]',
+          !validation.valid && value && 'border-accent-red',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
         {/* Line numbers gutter */}
-        <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#1e1e1e] border-r border-[#3c3c3c] flex items-start justify-end pr-3 pt-4 select-none pointer-events-none">
-          <span className="text-[#858585] text-sm font-mono">1</span>
+        <div className="absolute left-0 top-0 bottom-0 w-12 bg-[rgb(var(--code-bg))] border-r border-[rgb(var(--code-border))] flex items-start justify-end pr-3 pt-4 select-none pointer-events-none">
+          <span className="text-[rgb(var(--code-number))] text-sm font-mono">1</span>
         </div>
         
         {/* Code input area */}
@@ -155,7 +155,7 @@ export function CodeEditor({
           rows={5}
           className={cn(
             'w-full pl-14 pr-4 py-4 bg-transparent resize-none',
-            'text-[#d4d4d4] placeholder:text-[#6a6a6a]',
+            'text-[rgb(var(--code-text))] placeholder:text-[rgb(var(--code-muted))]',
             'focus:outline-none',
             'overflow-x-auto whitespace-pre',
             disabled && 'cursor-not-allowed'
@@ -177,18 +177,18 @@ export function CodeEditor({
         <div className="flex items-center gap-2 text-sm">
           {value ? (
             validation.valid ? (
-              <span className="flex items-center gap-1.5 text-[#4ec9b0]">
+              <span className="flex items-center gap-1.5 text-accent-green">
                 <Check className="w-4 h-4" />
                 <span>OK</span>
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-[#f14c4c]">
+              <span className="flex items-center gap-1.5 text-accent-red">
                 <AlertCircle className="w-4 h-4" />
                 <span>{validation.error}</span>
               </span>
             )
           ) : (
-            <span className="text-[#6a6a6a]">Введите однострочник</span>
+            <span className="text-[rgb(var(--code-muted))]">Введите однострочник</span>
           )}
         </div>
 
@@ -196,22 +196,22 @@ export function CodeEditor({
         <div
           className={cn(
             'flex items-center gap-2 text-sm font-mono',
-            length > maxLength ? 'text-[#f14c4c]' : 'text-[#858585]'
+            length > maxLength ? 'text-accent-red' : 'text-[rgb(var(--code-number))]'
           )}
         >
           <span>Длина:</span>
           <span className={cn(
             'font-bold px-2 py-0.5 rounded',
-            length > 0 ? 'bg-[#264f78] text-[#4fc1ff]' : ''
+            length > 0 ? 'bg-[rgb(var(--code-line))] text-[rgb(var(--code-accent))]' : ''
           )}>
             {length}
           </span>
-          {length > maxLength && <span className="text-[#f14c4c]">/ {maxLength}</span>}
+          {length > maxLength && <span className="text-accent-red">/ {maxLength}</span>}
         </div>
       </div>
 
       {/* Hint */}
-      <p className="text-xs text-[#6a6a6a] px-1">
+      <p className="text-xs text-[rgb(var(--code-muted))] px-1">
         💡 Пробелы внутри кода учитываются в длине. Enter заблокирован — код должен быть в одну строку.
       </p>
     </div>

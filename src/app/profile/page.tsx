@@ -134,7 +134,7 @@ export default function ProfilePage() {
                     Связь с аккаунтом
                   </label>
                   <div className="flex items-center gap-3 p-3 bg-background-tertiary rounded-lg">
-                    <div className="w-8 h-8 rounded bg-[#1a73e8] flex items-center justify-center">
+                    <div className="w-8 h-8 rounded bg-accent-blue flex items-center justify-center">
                       <span className="text-white font-bold text-sm">S</span>
                     </div>
                     <div className="flex-1">

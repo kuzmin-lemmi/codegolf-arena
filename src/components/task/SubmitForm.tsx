@@ -195,28 +195,28 @@ export function SubmitForm({
       {/* Visual code scaffold */}
       <div className="rounded-lg border border-border overflow-hidden">
         {/* Static header - function definition */}
-        <div className="bg-[#1a1f2a] px-4 py-2 border-b border-border/50 font-mono text-sm flex items-center justify-between">
+        <div className="bg-[rgb(var(--code-header))] px-4 py-2 border-b border-[rgb(var(--code-border))] font-mono text-sm flex items-center justify-between">
           <div>
-            <span className="text-[#c586c0]">def</span>{' '}
-            <span className="text-[#dcdcaa]">solution</span>
-            <span className="text-text-muted">(</span>
-            <span className="text-[#9cdcfe]">{functionArgs.join(', ')}</span>
-            <span className="text-text-muted">):</span>
+            <span className="text-[rgb(var(--code-keyword))]">def</span>{' '}
+            <span className="text-[rgb(var(--code-func))]">solution</span>
+            <span className="text-[rgb(var(--code-muted))]">(</span>
+            <span className="text-[rgb(var(--code-arg))]">{functionArgs.join(', ')}</span>
+            <span className="text-[rgb(var(--code-muted))]">):</span>
           </div>
-          <div className="text-text-muted">
-            <span className="text-text-secondary">Длина:</span>{' '}
-            <span className="text-[#9cdcfe] font-bold">{length}</span>
-            <span className="text-text-muted"> символов</span>
+          <div className="text-[rgb(var(--code-muted))]">
+            <span className="text-[rgb(var(--code-text))]">Длина:</span>{' '}
+            <span className="text-[rgb(var(--code-accent))] font-bold">{length}</span>
+            <span className="text-[rgb(var(--code-muted))]"> символов</span>
           </div>
         </div>
         
         {/* Return line with editable expression */}
-        <div className="bg-[#1e1e1e] flex items-stretch">
+        <div className="bg-[rgb(var(--code-bg))] flex items-stretch">
           {/* Static return keyword */}
-          <div className="flex-shrink-0 px-4 py-3 font-mono text-sm bg-[#1a1f2a] border-r border-border/50 flex items-center">
-            <span className="text-text-muted select-none">    </span>
-            <span className="text-[#c586c0] select-none">return</span>
-            <span className="text-text-muted select-none ml-1"> </span>
+          <div className="flex-shrink-0 px-4 py-3 font-mono text-sm bg-[rgb(var(--code-header))] border-r border-[rgb(var(--code-border))] flex items-center">
+            <span className="text-[rgb(var(--code-muted))] select-none">    </span>
+            <span className="text-[rgb(var(--code-keyword))] select-none">return</span>
+            <span className="text-[rgb(var(--code-muted))] select-none ml-1"> </span>
           </div>
           
           {/* Editable expression area */}

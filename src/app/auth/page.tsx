@@ -182,7 +182,7 @@ export default function AuthPage() {
           {/* Stepik Login */}
           <button
             onClick={handleStepikLogin}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-accent-blue hover:bg-accent-blue/90 text-white rounded-lg font-medium transition-colors"
           >
             <StepikLogo />
             <span>Войти через Stepik</span>
@@ -233,7 +233,7 @@ function StepikLogo() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
       <rect width="24" height="24" rx="4" fill="white" />
-      <path d="M7 8h10v2H7V8zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="#1a73e8" />
+      <path d="M7 8h10v2H7V8zm0 4h10v2H7v-2zm0 4h6v2H7v-2z" fill="rgb(var(--accent-blue))" />
     </svg>
   );
 }
