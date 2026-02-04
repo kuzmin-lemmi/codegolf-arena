@@ -4,71 +4,61 @@
 
 /* Тёмная тема (по умолчанию) */
 :root {
-  --background: #0d1117;
-  --background-secondary: #161b22;
-  --background-tertiary: #21262d;
-  --border: #30363d;
-  --text-primary: #f0f6fc;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-  --accent-blue: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-red: #f85149;
-  --accent-yellow: #d29922;
-  --accent-purple: #a371f7;
+  --background: #0b0f14;
+  --background-secondary: #111821;
+  --background-tertiary: #17212b;
+  --border: #243041;
+  --border-light: #334155;
+  --text-primary: #eef3f8;
+  --text-secondary: #a6b0bb;
+  --text-muted: #7d8894;
+  --accent-blue: #6aa7ff;
+  --accent-green: #41c47a;
+  --accent-amber: #f0a44b;
+  --accent-yellow: #e0b04f;
+  --accent-red: #f25f5c;
   --tier-bronze: #cd7f32;
   --tier-silver: #c0c0c0;
-  --tier-gold: #ffd700;
+  --tier-gold: #ffd166;
 }
 
 /* Светлая тема */
 [data-theme="light"] {
-  --background: #ffffff;
-  --background-secondary: #f6f8fa;
-  --background-tertiary: #eaeef2;
-  --border: #d0d7de;
-  --text-primary: #1f2328;
-  --text-secondary: #57606a;
-  --text-muted: #8c959f;
-  --accent-blue: #0969da;
-  --accent-green: #1a7f37;
-  --accent-red: #cf222e;
-  --accent-yellow: #9a6700;
-  --accent-purple: #8250df;
+  --background: #f6f7fb;
+  --background-secondary: #ffffff;
+  --background-tertiary: #eef1f6;
+  --border: #d9e0ea;
+  --border-light: #c8d2e1;
+  --text-primary: #121722;
+  --text-secondary: #465163;
+  --text-muted: #6e7a8c;
+  --accent-blue: #2f6ef5;
+  --accent-green: #1f9d5a;
+  --accent-amber: #c5741e;
+  --accent-yellow: #9a6b1b;
+  --accent-red: #c63d3a;
   --tier-bronze: #a05a2c;
   --tier-silver: #6e7781;
-  --tier-gold: #bf8700;
-}
-
-/* Импорт шрифтов */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
-/* Базовые стили */
-:root {
-  --background: #0d1117;
-  --background-secondary: #161b22;
-  --background-tertiary: #21262d;
-  --border: #30363d;
-  --border-light: #484f58;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-  --accent-blue: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-yellow: #d29922;
-  --accent-red: #f85149;
-  --tier-bronze: #cd7f32;
-  --tier-silver: #c0c0c0;
-  --tier-gold: #ffd700;
+  --tier-gold: #b07a16;
 }
 
 html {
   color-scheme: dark;
 }
 
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
 body {
   @apply bg-background text-text-primary font-sans antialiased;
   min-height: 100vh;
+  background-image:
+    radial-gradient(900px 500px at 20% -10%, rgba(106, 167, 255, 0.16), transparent 60%),
+    radial-gradient(800px 420px at 90% 0%, rgba(240, 164, 75, 0.12), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 120px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 120px);
+  background-attachment: fixed;
 }
 
 /* Кастомный скроллбар */
@@ -92,7 +82,9 @@ body {
 /* Утилиты для карточек */
 @layer components {
   .card {
-    @apply bg-background-secondary border border-border rounded-lg;
+    @apply border border-border rounded-lg;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.02)),
+      var(--background-secondary);
   }
 
   .card-hover {
@@ -104,7 +96,12 @@ body {
   }
 
   .btn-primary {
-    @apply btn bg-accent-blue text-white hover:bg-accent-blue/90;
+    @apply btn text-white;
+    background: linear-gradient(135deg, rgba(106, 167, 255, 1), rgba(59, 130, 246, 0.9));
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.05);
   }
 
   .btn-secondary {
