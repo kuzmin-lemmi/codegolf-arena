@@ -554,16 +554,18 @@ function TestDetails({
                 </button>
               )}
             </div>
-            {test.input && (
-              <div className="font-mono text-xs text-text-muted mt-2">Ввод: {test.input}</div>
-            )}
-            {(!test.passed || expandedTests[test.index]) && (
-              <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
-                {test.expected && <div>Ожидалось: {test.expected}</div>}
-                {test.actual && <div>Получено: {test.actual}</div>}
-                {test.error && <div className="text-accent-red">{test.error}</div>}
+            <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
+              <div>
+                Ввод: {test.input ? `solution(${test.input})` : 'solution()'}
               </div>
-            )}
+              {test.expected && <div>Ожидалось: {test.expected}</div>}
+              {(!test.passed || expandedTests[test.index]) && test.actual && (
+                <div>Получено: {test.actual}</div>
+              )}
+              {(!test.passed || expandedTests[test.index]) && test.error && (
+                <div className="text-accent-red">{test.error}</div>
+              )}
+            </div>
           </div>
         ))}
         {viewMode === 'fail' && failedTests.length === 0 && (
