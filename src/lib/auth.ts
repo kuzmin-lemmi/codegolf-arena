@@ -1,6 +1,7 @@
 // src/lib/auth.ts
 
 import { NextRequest } from 'next/server';
+import { randomBytes, createHash } from 'crypto';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
@@ -30,8 +31,9 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
       return null;
     }
 
+    const tokenHash = hashToken(sessionToken);
     const session = await prisma.session.findUnique({
-      where: { token: sessionToken },
+      where: { token: tokenHash },
       include: {
         user: {
           select: {
@@ -47,11 +49,17 @@ export async function getCurrentUser(request: NextRequest): Promise<SessionUser 
       },
     });
 
-    if (!session || session.expiresAt < new Date()) {
-      // Сессия истекла или не найдена
-      if (session) {
-        await prisma.session.delete({ where: { id: session.id } });
+    if (!session) {
+      // Старый формат (token хранился plaintext) — инвалидируем
+      const legacy = await prisma.session.findUnique({ where: { token: sessionToken } });
+      if (legacy) {
+        await prisma.session.delete({ where: { id: legacy.id } });
       }
+      return null;
+    }
+
+    if (session.expiresAt < new Date()) {
+      await prisma.session.delete({ where: { id: session.id } });
       return null;
     }
 
@@ -70,7 +78,7 @@ export async function createSession(userId: string): Promise<string> {
   await prisma.session.create({
     data: {
       userId,
-      token,
+      token: hashToken(token),
       expiresAt,
     },
   });
@@ -80,19 +88,27 @@ export async function createSession(userId: string): Promise<string> {
 
 // Удаляем сессию
 export async function deleteSession(token: string): Promise<void> {
+  const tokenHash = hashToken(token);
   await prisma.session.deleteMany({
-    where: { token },
+    where: {
+      OR: [{ token: tokenHash }, { token }],
+    },
   });
 }
 
-// Генерация токена сессии
+// Генерация криптографически безопасного токена сессии
 function generateSessionToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(32).toString('hex'); // 64 символа hex
+}
+
+// Генерация криптографически безопасного state для OAuth CSRF защиты
+export function generateOAuthState(): string {
+  return randomBytes(16).toString('hex'); // 32 символа hex
+}
+
+// Хэширование токена для хранения в БД (опционально, для дополнительной безопасности)
+export function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 // ==================== EMAIL АВТОРИЗАЦИЯ ====================
@@ -191,8 +207,8 @@ interface StepikUser {
   avatar: string | null;
 }
 
-// Генерация URL для авторизации через Stepik
-export function getStepikAuthUrl(): string {
+// Генерация URL для авторизации через Stepik с CSRF state
+export function getStepikAuthUrl(state: string): string {
   const clientId = process.env.STEPIK_CLIENT_ID;
   const redirectUri = process.env.STEPIK_REDIRECT_URI;
 
@@ -204,6 +220,7 @@ export function getStepikAuthUrl(): string {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
+    state: state, // CSRF protection
   });
 
   return `${STEPIK_OAUTH_URL}?${params.toString()}`;

@@ -2,12 +2,32 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { loginWithEmail, createSession } from '@/lib/auth';
+import { checkAuthRateLimit, getClientIP } from '@/lib/rate-limiter';
 
 const SESSION_COOKIE_NAME = 'arena_session';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней в секундах
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkAuthRateLimit(clientIP);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Слишком много попыток. Попробуйте через ${rateLimitResult.retryAfter} сек.`,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitResult.retryAfter),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { email, password } = body;
 

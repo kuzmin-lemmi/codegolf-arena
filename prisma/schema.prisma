@@ -47,6 +47,8 @@ model Session {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([expiresAt])
   @@map("sessions")
 }
 
@@ -108,6 +110,9 @@ model Submission {
   user           User             @relation(fields: [userId], references: [id])
   bestSubmission BestSubmission?
 
+  @@index([taskId])
+  @@index([userId])
+  @@index([taskId, userId])
   @@map("submissions")
 }
 
@@ -125,6 +130,8 @@ model BestSubmission {
   submission Submission @relation(fields: [submissionId], references: [id])
 
   @@unique([taskId, userId])
+  @@index([userId])
+  @@index([taskId, codeLength, achievedAt])
   @@map("best_submissions")
 }
 
@@ -150,6 +157,7 @@ model Competition {
   startsAt    DateTime @map("starts_at")
   endsAt      DateTime @map("ends_at")
   isActive    Boolean  @default(true) @map("is_active")
+  showSolutions Boolean @default(false) @map("show_solutions")
   resultsUrl  String?  @map("results_url") // Ссылка на результаты (Telegram/Stepik)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

@@ -1,39 +1,79 @@
 // src/app/admin/page.tsx
 
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { 
   LayoutDashboard, FileText, Trophy, Users, Settings,
   Plus, ArrowRight 
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
-import { useAuth } from '@/context/AuthContext';
+import { prisma } from '@/lib/db';
+import { hashToken } from '@/lib/auth';
 
-export default function AdminPage() {
-  const router = useRouter();
-  const { user, isLoading, isLoggedIn } = useAuth();
-
-  // Редирект если не админ
-  useEffect(() => {
-    if (!isLoading && (!isLoggedIn || !user?.isAdmin)) {
-      router.push('/');
-    }
-  }, [isLoading, isLoggedIn, user, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!user?.isAdmin) {
+// Server-side admin check
+async function getAdminUser() {
+  const cookieStore = cookies();
+  const sessionToken = cookieStore.get('arena_session')?.value;
+  
+  if (!sessionToken) {
     return null;
   }
+
+  const session = await prisma.session.findUnique({
+    where: { token: hashToken(sessionToken) },
+    include: {
+      user: {
+        select: {
+          id: true,
+          isAdmin: true,
+          displayName: true,
+        },
+      },
+    },
+  });
+
+  // Старый формат (plaintext token) — инвалидируем
+  if (!session) {
+    const legacy = await prisma.session.findUnique({ where: { token: sessionToken } });
+    if (legacy) {
+      await prisma.session.delete({ where: { id: legacy.id } });
+    }
+    return null;
+  }
+
+  if (session.expiresAt < new Date() || !session.user.isAdmin) {
+    return null;
+  }
+
+  return session.user;
+}
+
+// Get real stats from database
+async function getAdminStats() {
+  const [taskCount, userCount, submissionCount, activeCompetitions] = await Promise.all([
+    prisma.task.count(),
+    prisma.user.count(),
+    prisma.submission.count(),
+    prisma.competition.count({ where: { isActive: true } }),
+  ]);
+
+  return {
+    tasks: taskCount,
+    users: userCount,
+    submissions: submissionCount,
+    activeCompetitions,
+  };
+}
+
+export default async function AdminPage() {
+  const user = await getAdminUser();
+  
+  if (!user) {
+    redirect('/');
+  }
+
+  const stats = await getAdminStats();
 
   return (
     <div className="min-h-screen">
@@ -58,23 +98,17 @@ export default function AdminPage() {
             title="Задачи"
             description="Создание, редактирование и публикация задач"
             href="/admin/tasks"
-            stats="5 задач"
-            actions={
-              <Link href="/admin/tasks/new">
-                <Button variant="primary" size="sm" icon={Plus}>
-                  Новая задача
-                </Button>
-              </Link>
-            }
+            stats={`${stats.tasks} задач`}
+            color="blue"
           />
 
-          {/* Weekly Challenge */}
+          {/* Competitions */}
           <AdminCard
             icon={Trophy}
-            title="Турнир недели"
-            description="Управление еженедельными соревнованиями"
-            href="/admin/weekly"
-            stats="Активен до 1 февраля"
+            title="Соревнования"
+            description="Управление турнирами и задачей недели"
+            href="/admin/competitions"
+            stats={`${stats.activeCompetitions} активных`}
             color="gold"
           />
 
@@ -82,32 +116,37 @@ export default function AdminPage() {
           <AdminCard
             icon={Users}
             title="Пользователи"
-            description="Просмотр и управление аккаунтами"
+            description="Просмотр и модерация пользователей"
             href="/admin/users"
-            stats="127 пользователей"
+            stats={`${stats.users} пользователей`}
             color="green"
-            disabled
           />
 
           {/* Settings */}
           <AdminCard
             icon={Settings}
             title="Настройки"
-            description="Конфигурация платформы"
+            description="Общие настройки платформы"
             href="/admin/settings"
+            stats={`${stats.submissions} сабмитов всего`}
             color="purple"
-            disabled
           />
         </div>
 
-        {/* Quick Stats */}
+        {/* Quick Actions */}
         <div className="mt-8">
-          <h2 className="text-lg font-semibold mb-4">Быстрая статистика</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Всего задач" value="5" />
-            <StatCard label="Решений сегодня" value="47" />
-            <StatCard label="Новых пользователей" value="12" />
-            <StatCard label="Активных сессий" value="34" />
+          <h2 className="text-lg font-semibold mb-4">Быстрые действия</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/tasks/new">
+              <Button variant="primary" icon={Plus}>
+                Создать задачу
+              </Button>
+            </Link>
+            <Link href="/admin/competitions/new">
+              <Button variant="secondary" icon={Plus}>
+                Создать соревнование
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -115,27 +154,21 @@ export default function AdminPage() {
   );
 }
 
-interface AdminCardProps {
-  icon: React.ElementType;
+function AdminCard({
+  icon: Icon,
+  title,
+  description,
+  href,
+  stats,
+  color,
+}: {
+  icon: any;
   title: string;
   description: string;
   href: string;
-  stats?: string;
-  color?: 'blue' | 'gold' | 'green' | 'purple';
-  actions?: React.ReactNode;
-  disabled?: boolean;
-}
-
-function AdminCard({ 
-  icon: Icon, 
-  title, 
-  description, 
-  href, 
-  stats, 
-  color = 'blue',
-  actions,
-  disabled = false,
-}: AdminCardProps) {
+  stats: string;
+  color: 'blue' | 'gold' | 'green' | 'purple';
+}) {
   const colorClasses = {
     blue: 'text-accent-blue bg-accent-blue/10',
     gold: 'text-tier-gold bg-tier-gold/10',
@@ -144,47 +177,21 @@ function AdminCard({
   };
 
   const content = (
-    <Card 
-      padding="lg" 
-      hover={!disabled}
-      className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
-    >
-      <div className="flex items-start gap-4">
+    <Card hover padding="lg" className="h-full">
+      <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
           <Icon className="w-6 h-6" />
         </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg mb-1">{title}</h3>
-          <p className="text-sm text-text-secondary mb-3">{description}</p>
-          {stats && (
-            <div className="text-sm text-text-muted">{stats}</div>
-          )}
-          {actions && (
-            <div className="mt-3">{actions}</div>
-          )}
-          {disabled && (
-            <div className="text-xs text-text-muted mt-2">Скоро</div>
-          )}
-        </div>
-        {!disabled && (
-          <ArrowRight className="w-5 h-5 text-text-muted" />
-        )}
+        <span className="text-sm text-text-muted">{stats}</span>
+      </div>
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      <p className="text-text-secondary text-sm mb-4">{description}</p>
+      <div className="flex items-center gap-1 text-accent-blue text-sm font-medium">
+        Перейти
+        <ArrowRight className="w-4 h-4" />
       </div>
     </Card>
   );
 
-  if (disabled) {
-    return content;
-  }
-
   return <Link href={href}>{content}</Link>;
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card padding="md">
-      <div className="text-2xl font-bold text-text-primary">{value}</div>
-      <div className="text-sm text-text-secondary">{label}</div>
-    </Card>
-  );
 }

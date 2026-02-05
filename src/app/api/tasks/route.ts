@@ -54,36 +54,44 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Получаем лучший результат по каждой задаче
-    const tasksWithBest = await Promise.all(
-      tasks.map(async (task) => {
-        const bestSubmission = await prisma.bestSubmission.findFirst({
-          where: { taskId: task.id },
-          orderBy: [
-            { codeLength: 'asc' },
-            { achievedAt: 'asc' },
-          ],
-          select: {
-            codeLength: true,
-            user: {
-              select: { nickname: true, displayName: true },
-            },
-          },
-        });
+    const bestRows = await prisma.$queryRaw<
+      Array<{ taskId: string; codeLength: number; nickname: string | null; displayName: string }>
+    >`
+      SELECT ranked.task_id AS taskId,
+             ranked.code_length AS codeLength,
+             u.nickname AS nickname,
+             u.display_name AS displayName
+      FROM (
+        SELECT
+          task_id,
+          user_id,
+          code_length,
+          ROW_NUMBER() OVER (
+            PARTITION BY task_id
+            ORDER BY code_length ASC, achieved_at ASC, user_id ASC
+          ) AS rnk
+        FROM best_submissions
+      ) ranked
+      JOIN users u ON u.id = ranked.user_id
+      WHERE ranked.rnk = 1
+    `;
 
-        return {
-          ...task,
-          constraintsJson: JSON.parse(task.constraintsJson),
-          participantsCount: task._count.bestSubmissions,
-          bestSolution: bestSubmission
-            ? {
-                length: bestSubmission.codeLength,
-                nickname: bestSubmission.user.nickname || bestSubmission.user.displayName,
-              }
-            : null,
-        };
-      })
+    const bestByTask = new Map(
+      bestRows.map((row) => [
+        row.taskId,
+        {
+          length: row.codeLength,
+          nickname: row.nickname || row.displayName,
+        },
+      ])
     );
+
+    const tasksWithBest = tasks.map((task) => ({
+      ...task,
+      constraintsJson: JSON.parse(task.constraintsJson),
+      participantsCount: task._count.bestSubmissions,
+      bestSolution: bestByTask.get(task.id) || null,
+    }));
 
     return NextResponse.json({
       success: true,

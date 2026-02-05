@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db';
 import { TasksPageClient } from './TasksPageClient';
+import type { TaskMode, TaskTier } from '@/types';
 
 export const metadata = {
   title: 'Задачи — Арена однострочников',
@@ -46,7 +47,7 @@ async function getTasks() {
           slug: task.slug,
           title: task.title,
           tier: task.tier as TaskTier,
-          mode: task.mode,
+          mode: task.mode as TaskMode,
           functionSignature: task.functionSignature,
           statementMd: task.statementMd,
           participantsCount: task._count.bestSubmissions,

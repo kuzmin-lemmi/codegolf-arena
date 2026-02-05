@@ -20,11 +20,7 @@ export async function GET(request: NextRequest) {
             title: true,
             tier: true,
             mode: true,
-          },
-        },
-        _count: {
-          select: {
-            task: {
+            _count: {
               select: {
                 bestSubmissions: true,
               },

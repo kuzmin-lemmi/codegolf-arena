@@ -19,13 +19,16 @@ interface PistonResponse {
 
 interface ExecuteResult {
   output: string;
+  stdout: string;
+  stderr: string;
   error: string | null;
   exitCode: number;
 }
 
 export async function executeCode(
   code: string,
-  timeout: number = 2000
+  timeout: number = 2000,
+  signal?: AbortSignal
 ): Promise<ExecuteResult> {
   try {
     const response = await fetch(`${PISTON_API_URL}/execute`, {
@@ -33,6 +36,7 @@ export async function executeCode(
       headers: {
         'Content-Type': 'application/json',
       },
+      signal,
       body: JSON.stringify({
         language: 'python',
         version: '3.10', // Фиксируем версию Python
@@ -57,6 +61,8 @@ export async function executeCode(
     if (data.compile && data.compile.code !== 0) {
       return {
         output: '',
+        stdout: '',
+        stderr: data.compile.stderr || '',
         error: data.compile.stderr || 'Compilation error',
         exitCode: data.compile.code,
       };
@@ -66,6 +72,8 @@ export async function executeCode(
     if (data.run.stderr && data.run.code !== 0) {
       return {
         output: data.run.stdout,
+        stdout: data.run.stdout,
+        stderr: data.run.stderr,
         error: data.run.stderr,
         exitCode: data.run.code,
       };
@@ -73,6 +81,8 @@ export async function executeCode(
 
     return {
       output: data.run.stdout,
+      stdout: data.run.stdout,
+      stderr: data.run.stderr || '',
       error: null,
       exitCode: data.run.code,
     };
@@ -80,6 +90,8 @@ export async function executeCode(
     console.error('Piston execution error:', error);
     return {
       output: '',
+      stdout: '',
+      stderr: '',
       error: error.message || 'Execution failed',
       exitCode: -1,
     };

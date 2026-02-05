@@ -9,7 +9,9 @@ export async function GET(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const rawLimit = searchParams.get('limit');
+    const parsed = rawLimit ? Number.parseInt(rawLimit, 10) : NaN;
+    const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 100) : 50;
 
     // Находим задачу
     const task = await prisma.task.findUnique({
@@ -47,7 +49,7 @@ export async function GET(
     // Формируем лидерборд с рангами
     const leaderboard = bestSubmissions.map((bs, index) => ({
       rank: index + 1,
-      oderId: bs.user.id,
+      userId: bs.user.id,
       nickname: bs.user.nickname || bs.user.displayName,
       avatarUrl: bs.user.avatarUrl,
       codeLength: bs.codeLength,

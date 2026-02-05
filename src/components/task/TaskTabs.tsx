@@ -2,15 +2,15 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { LeaderboardTable, LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
-import { Lock, Code2, Trophy, FileText } from 'lucide-react';
+import { Lock, Code2, Trophy, Loader2 } from 'lucide-react';
 
 interface TaskTabsProps {
   leaderboard: LeaderboardEntry[];
-  solutions?: SolutionEntry[];
-  canViewSolutions: boolean;
+  taskSlug: string;
+  refreshKey?: number;
   currentUserRank?: number;
 }
 
@@ -26,11 +26,53 @@ type TabId = 'description' | 'leaderboard' | 'solutions';
 
 export function TaskTabs({
   leaderboard,
-  solutions = [],
-  canViewSolutions,
+  taskSlug,
+  refreshKey,
   currentUserRank,
 }: TaskTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('leaderboard');
+  const [solutions, setSolutions] = useState<SolutionEntry[]>([]);
+  const [canViewSolutions, setCanViewSolutions] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSolutions = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/tasks/${taskSlug}/solutions`);
+        const json = await res.json();
+
+        if (!isMounted) return;
+
+        if (!json.success) {
+          setCanViewSolutions(false);
+          setSolutions([]);
+          setMessage(json.error || 'Не удалось загрузить решения');
+          return;
+        }
+
+        setCanViewSolutions(!!json.data?.canView);
+        setSolutions(json.data?.solutions || []);
+        setMessage(json.data?.message || null);
+      } catch (error) {
+        if (!isMounted) return;
+        setCanViewSolutions(false);
+        setSolutions([]);
+        setMessage('Не удалось загрузить решения');
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchSolutions();
+    return () => {
+      isMounted = false;
+    };
+  }, [taskSlug, refreshKey]);
 
   const tabs = [
     { id: 'leaderboard' as const, label: 'Лидерборд', icon: Trophy },
@@ -73,6 +115,8 @@ export function TaskTabs({
           <SolutionsContent
             solutions={solutions}
             canView={canViewSolutions}
+            message={message}
+            isLoading={isLoading}
           />
         )}
       </div>
@@ -104,10 +148,26 @@ function LeaderboardContent({
 function SolutionsContent({
   solutions,
   canView,
+  message,
+  isLoading,
 }: {
   solutions: SolutionEntry[];
   canView: boolean;
+  message?: string | null;
+  isLoading?: boolean;
 }) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <Loader2 className="w-8 h-8 text-text-muted animate-spin" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Загрузка решений</h3>
+        <p className="text-text-secondary">Подождите немного</p>
+      </div>
+    );
+  }
+
   if (!canView) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -116,7 +176,7 @@ function SolutionsContent({
         </div>
         <h3 className="text-lg font-semibold mb-2">Решения скрыты</h3>
         <p className="text-text-secondary max-w-sm">
-          Решите задачу, чтобы увидеть решения других участников
+          {message || 'Решите задачу, чтобы увидеть решения других участников'}
         </p>
       </div>
     );

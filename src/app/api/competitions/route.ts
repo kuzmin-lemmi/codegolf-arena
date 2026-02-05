@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { title, description, startsAt, endsAt, taskIds, resultsUrl } = body;
+    const { title, description, startsAt, endsAt, taskIds, resultsUrl, showSolutions } = body;
 
     // Валидация
     if (!title || !startsAt || !endsAt) {
@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         endsAt: endDate,
         resultsUrl: resultsUrl || null,
         isActive: true,
+        showSolutions: !!showSolutions,
         tasks: {
           create: taskIds.map((taskId: string, index: number) => ({
             taskId,

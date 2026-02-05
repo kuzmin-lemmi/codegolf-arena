@@ -2,12 +2,32 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { registerWithEmail, createSession } from '@/lib/auth';
+import { checkAuthRateLimit, getClientIP } from '@/lib/rate-limiter';
 
 const SESSION_COOKIE_NAME = 'arena_session';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней в секундах
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkAuthRateLimit(clientIP);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Слишком много попыток. Попробуйте через ${rateLimitResult.retryAfter} сек.`,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitResult.retryAfter),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { email, password, nickname } = body;
 
@@ -28,10 +48,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Валидация пароля
-    if (password.length < 6) {
+    // Валидация пароля (минимум 8 символов)
+    if (password.length < 8) {
       return NextResponse.json(
-        { success: false, error: 'Password must be at least 6 characters' },
+        { success: false, error: 'Пароль должен быть не менее 8 символов' },
         { status: 400 }
       );
     }

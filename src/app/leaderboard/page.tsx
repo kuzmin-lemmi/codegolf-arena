@@ -30,7 +30,7 @@ async function getLeaderboard() {
 
     return users.map((user, index) => ({
       rank: index + 1,
-      oderId: user.id,
+      userId: user.id,
       nickname: user.nickname || user.displayName,
       avatarUrl: user.avatarUrl,
       points: user.totalPoints,

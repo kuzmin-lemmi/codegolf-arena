@@ -101,7 +101,7 @@ async function getHomePageData() {
         : null,
       globalLeaderboard: globalLeaderboard.map((u, idx) => ({
         rank: idx + 1,
-        oderId: u.id,
+        userId: u.id,
         nickname: u.nickname || u.displayName,
         avatarUrl: u.avatarUrl,
         points: u.totalPoints,

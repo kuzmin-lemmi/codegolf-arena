@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   User, Trophy, Code2, Calendar, Edit2, Check, X, 
@@ -10,46 +10,75 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge, Avatar } from '@/components/ui';
 import { formatDate, cn } from '@/lib/utils';
-
-// Мок данных пользователя
-const mockUser = {
-  id: '1',
-  displayName: 'Leonard',
-  nickname: 'Leonard',
-  avatarUrl: null,
-  totalPoints: 125,
-  createdAt: new Date('2024-01-15'),
-  stepikUserId: 12345,
-};
-
-const mockStats = {
-  tasksSolved: 3,
-  totalTasks: 5,
-  bestRank: 1,
-  totalSubmissions: 47,
-};
-
-const mockSolvedTasks = [
-  { slug: 'sum-numbers', title: 'Сумма чисел в строке', tier: 'bronze' as const, length: 21, rank: 1 },
-  { slug: 'palindrome-check', title: 'Проверка палиндрома', tier: 'bronze' as const, length: 11, rank: 3 },
-  { slug: 'reverse-words', title: 'Переворот слов', tier: 'bronze' as const, length: 24, rank: 5 },
-];
+import { useProfile } from '@/hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProfilePage() {
+  const { data, isLoading, refetch } = useProfile();
+  const { refresh } = useAuth();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [nickname, setNickname] = useState(mockUser.nickname);
-  const [tempNickname, setTempNickname] = useState(mockUser.nickname);
+  const [nickname, setNickname] = useState('');
+  const [tempNickname, setTempNickname] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSaveNickname = () => {
-    // TODO: API call
-    setNickname(tempNickname);
-    setIsEditingNickname(false);
+  useEffect(() => {
+    if (!data) return;
+    const name = data.nickname || data.displayName;
+    setNickname(name);
+    setTempNickname(name);
+  }, [data]);
+
+  const handleSaveNickname = async () => {
+    if (!tempNickname.trim()) return;
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: tempNickname.trim() }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        setSaveError(json.error || 'Не удалось обновить ник');
+        return;
+      }
+
+      await refetch();
+      await refresh();
+      setIsEditingNickname(false);
+    } catch (err) {
+      setSaveError('Ошибка соединения');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancelEdit = () => {
     setTempNickname(nickname);
     setIsEditingNickname(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-text-secondary">Загрузка профиля...</div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-text-secondary">Профиль недоступен</div>
+      </div>
+    );
+  }
+
+  const solvedTasks = data.solvedTasks || [];
 
   return (
     <div className="min-h-screen">
@@ -58,7 +87,7 @@ export default function ProfilePage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-6">
             <Avatar
-              src={mockUser.avatarUrl}
+              src={data.avatarUrl}
               name={nickname}
               size="lg"
               className="w-20 h-20 text-2xl"
@@ -67,7 +96,7 @@ export default function ProfilePage() {
               <h1 className="text-2xl font-bold mb-1">{nickname}</h1>
               <p className="text-text-secondary flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                На платформе с {formatDate(mockUser.createdAt)}
+                На платформе с {formatDate(new Date(data.createdAt))}
               </p>
             </div>
           </div>
@@ -101,12 +130,14 @@ export default function ProfilePage() {
                       />
                       <button
                         onClick={handleSaveNickname}
+                        disabled={isSaving}
                         className="p-2 text-accent-green hover:bg-accent-green/10 rounded-md transition-colors"
                       >
                         <Check className="w-5 h-5" />
                       </button>
                       <button
                         onClick={handleCancelEdit}
+                        disabled={isSaving}
                         className="p-2 text-accent-red hover:bg-accent-red/10 rounded-md transition-colors"
                       >
                         <X className="w-5 h-5" />
@@ -123,13 +154,17 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   )}
+                  {saveError && (
+                    <p className="text-xs text-accent-red mt-2">{saveError}</p>
+                  )}
                   <p className="text-xs text-text-muted mt-1">
                     Можно менять раз в 7 дней
                   </p>
                 </div>
 
                 {/* Stepik Link */}
-                <div>
+                {data.stepikUserId && (
+                  <div>
                   <label className="block text-sm text-text-secondary mb-2">
                     Связь с аккаунтом
                   </label>
@@ -140,11 +175,11 @@ export default function ProfilePage() {
                     <div className="flex-1">
                       <div className="font-medium">Stepik</div>
                       <div className="text-sm text-text-secondary">
-                        ID: {mockUser.stepikUserId}
+                        ID: {data.stepikUserId}
                       </div>
                     </div>
                     <a
-                      href={`https://stepik.org/users/${mockUser.stepikUserId}`}
+                      href={`https://stepik.org/users/${data.stepikUserId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 text-text-secondary hover:text-accent-blue transition-colors"
@@ -153,6 +188,7 @@ export default function ProfilePage() {
                     </a>
                   </div>
                 </div>
+                )}
               </div>
             </Card>
 
@@ -166,20 +202,20 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-4">
                 <StatBlock
                   label="Решено задач"
-                  value={`${mockStats.tasksSolved}/${mockStats.totalTasks}`}
+                  value={data.tasksSolved}
                 />
                 <StatBlock
                   label="Лучшее место"
-                  value={`#${mockStats.bestRank}`}
+                  value={data.bestRank ? `#${data.bestRank}` : '—'}
                   highlight
                 />
                 <StatBlock
                   label="Всего попыток"
-                  value={mockStats.totalSubmissions}
+                  value={data.totalSubmissions}
                 />
                 <StatBlock
                   label="Очки прогресса"
-                  value={mockUser.totalPoints}
+                  value={data.totalPoints}
                 />
               </div>
             </Card>
@@ -201,7 +237,7 @@ export default function ProfilePage() {
                 </Link>
               </div>
 
-              {mockSolvedTasks.length === 0 ? (
+              {solvedTasks.length === 0 ? (
                 <div className="text-center py-12">
                   <Code2 className="w-12 h-12 mx-auto text-text-muted mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Пока нет решённых задач</h3>
@@ -214,7 +250,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {mockSolvedTasks.map((task) => (
+                  {solvedTasks.map((task) => (
                     <Link
                       key={task.slug}
                       href={`/task/${task.slug}`}
@@ -230,7 +266,7 @@ export default function ProfilePage() {
                             Длина: <span className="text-accent-green font-mono font-bold">{task.length}</span>
                           </span>
                           <span>
-                            Место: <span className="text-accent-blue font-bold">#{task.rank}</span>
+                            Решено: <span className="text-text-primary">{formatDate(new Date(task.achievedAt))}</span>
                           </span>
                         </div>
                       </div>

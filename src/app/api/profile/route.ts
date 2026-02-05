@@ -189,32 +189,22 @@ export async function PATCH(request: NextRequest) {
 
 // Вспомогательная функция: лучшее место пользователя
 async function getBestRank(userId: string): Promise<number | null> {
-  const userBests = await prisma.bestSubmission.findMany({
-    where: { userId },
-    select: { taskId: true, codeLength: true, achievedAt: true },
-  });
+  // Один запрос вместо N+1: rank по каждой задаче и min(rank) для пользователя
+  const rows = await prisma.$queryRaw<Array<{ bestRank: number | null }>>`
+    SELECT MIN(rnk) AS bestRank
+    FROM (
+      SELECT
+        user_id,
+        ROW_NUMBER() OVER (
+          PARTITION BY task_id
+          ORDER BY code_length ASC, achieved_at ASC
+        ) AS rnk
+      FROM best_submissions
+    ) ranked
+    WHERE user_id = ${userId}
+  `;
 
-  if (userBests.length === 0) return null;
-
-  let bestRank = Infinity;
-
-  for (const best of userBests) {
-    const betterCount = await prisma.bestSubmission.count({
-      where: {
-        taskId: best.taskId,
-        OR: [
-          { codeLength: { lt: best.codeLength } },
-          {
-            codeLength: best.codeLength,
-            achievedAt: { lt: best.achievedAt },
-          },
-        ],
-      },
-    });
-
-    const rank = betterCount + 1;
-    if (rank < bestRank) bestRank = rank;
-  }
-
-  return bestRank === Infinity ? null : bestRank;
+  const bestRank = rows?.[0]?.bestRank;
+  if (bestRank === null || bestRank === undefined) return null;
+  return Number(bestRank);
 }

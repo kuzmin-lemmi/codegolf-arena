@@ -21,6 +21,7 @@ interface SubmitFormProps {
     expectedOutput: string;
   }>;
   allowedImports?: string[];
+  onSubmitSuccess?: (result: SubmitResult) => void;
 }
 
 interface SubmitResult {
@@ -58,6 +59,7 @@ export function SubmitForm({
   functionArgs = ['s'],
   testcases = [],
   allowedImports = [],
+  onSubmitSuccess,
 }: SubmitFormProps) {
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,6 +105,9 @@ export function SubmitForm({
       }
 
       setResult(data.data);
+      if (onSubmitSuccess) {
+        onSubmitSuccess(data.data as SubmitResult);
+      }
     } catch (error) {
       setResult({
         status: 'error',

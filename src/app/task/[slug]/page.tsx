@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { TaskStatement } from '@/components/task/TaskStatement';
-import { TaskTabs } from '@/components/task/TaskTabs';
 import { TaskPageClient } from './TaskPageClient';
 import { prisma } from '@/lib/db';
 import type { Metadata } from 'next';
+import type { Task, TaskConstraints, TaskMode, TaskStatus, TaskTier } from '@/types';
 
 interface TaskPageProps {
   params: { slug: string };
@@ -73,10 +73,20 @@ export default async function TaskPage({ params }: TaskPageProps) {
     achievedAt: entry.achievedAt,
   }));
 
-  const taskData = {
-    ...task,
-    functionArgs: JSON.parse(task.functionArgs),
-    constraintsJson: JSON.parse(task.constraintsJson),
+  const taskData: Task = {
+    id: task.id,
+    slug: task.slug,
+    title: task.title,
+    statementMd: task.statementMd,
+    functionSignature: task.functionSignature,
+    functionArgs: JSON.parse(task.functionArgs) as string[],
+    constraintsJson: JSON.parse(task.constraintsJson) as TaskConstraints,
+    mode: task.mode as TaskMode,
+    tier: task.tier as TaskTier,
+    status: task.status as TaskStatus,
+    exampleInput: task.exampleInput,
+    exampleOutput: task.exampleOutput,
+    createdAt: task.createdAt,
   };
 
   const openTestcases = task.testcases.map((tc) => ({
@@ -84,9 +94,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
     expectedOutput: tc.expectedOutput,
   }));
 
-  const canViewSolutions = false;
   const currentUserRank = undefined;
-  const solutions: Array<{ rank: number; nickname: string; code: string; codeLength: number; achievedAt: Date }> = [];
 
   return (
     <div className="min-h-screen pb-12">
@@ -113,24 +121,16 @@ export default async function TaskPage({ params }: TaskPageProps) {
           </div>
 
           {/* Right Column - Editor + Results (Client Component) */}
-          <div className="space-y-6">
+            <div className="space-y-6">
               <TaskPageClient
                 taskSlug={params.slug}
                 functionArgs={taskData.functionArgs}
                 testcases={openTestcases}
                 allowedImports={taskData.constraintsJson.allowed_imports || []}
-              />
-
-            {/* Tabs: Leaderboard / Solutions */}
-            <Card padding="lg">
-              <TaskTabs
                 leaderboard={leaderboard}
-                solutions={solutions}
-                canViewSolutions={canViewSolutions}
                 currentUserRank={currentUserRank}
               />
-            </Card>
-          </div>
+            </div>
         </div>
       </div>
     </div>

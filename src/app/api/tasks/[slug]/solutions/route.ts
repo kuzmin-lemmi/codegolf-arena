@@ -58,6 +58,31 @@ export async function GET(
       });
     }
 
+    // Если задача в активном соревновании — решения могут быть скрыты
+    const now = new Date();
+    const activeCompetition = await prisma.competition.findFirst({
+      where: {
+        isActive: true,
+        startsAt: { lte: now },
+        endsAt: { gte: now },
+        tasks: {
+          some: { taskId: task.id },
+        },
+      },
+      select: { id: true, showSolutions: true },
+    });
+
+    if (activeCompetition && !activeCompetition.showSolutions) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          canView: false,
+          message: 'Решения временно скрыты во время соревнования',
+          solutions: [],
+        },
+      });
+    }
+
     // Для турнирных задач проверяем дедлайн
     if (task.mode === 'tournament') {
       const activeChallenge = await prisma.weeklyChallenge.findFirst({

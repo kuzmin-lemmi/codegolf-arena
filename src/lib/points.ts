@@ -5,7 +5,7 @@
  * Упрощённая версия для MVP: только очки за первый PASS
  */
 
-import { TaskTier } from '@prisma/client';
+import type { TaskTier } from '@/types';
 
 // ==================== КОНСТАНТЫ ====================
 

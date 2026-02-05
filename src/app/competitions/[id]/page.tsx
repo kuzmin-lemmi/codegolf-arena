@@ -6,6 +6,7 @@ import { ArrowLeft, Trophy, Clock, Users, Lock, CheckCircle, Circle } from 'luci
 import { Card, Button, TierBadge, Avatar } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatTimeRemaining, cn } from '@/lib/utils';
+import type { TaskTier } from '@/types';
 
 interface Props {
   params: { id: string };
@@ -135,7 +136,7 @@ export default async function CompetitionPage({ params }: Props) {
                       <div className="flex items-center gap-2 mb-1">
                         <Circle className="w-4 h-4 text-text-muted" />
                         <h3 className="font-semibold">{ct.task.title}</h3>
-                        <TierBadge tier={ct.task.tier} />
+                        <TierBadge tier={ct.task.tier as TaskTier} />
                       </div>
                       <p className="text-sm text-text-secondary line-clamp-2">
                         {ct.task.statementMd.split('\n')[0]}

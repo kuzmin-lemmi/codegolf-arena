@@ -129,16 +129,16 @@ export const mockWeeklyChallenge: WeeklyChallenge = {
 };
 
 export const mockLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, nickname: 'Leonard', codeLength: 28, achievedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-  { rank: 2, nickname: 'Anna', codeLength: 31, achievedAt: new Date(Date.now() - 5 * 60 * 60 * 1000) },
-  { rank: 3, nickname: 'CodeNinja', codeLength: 34, achievedAt: new Date(Date.now() - 12 * 60 * 60 * 1000) },
-  { rank: 4, nickname: 'Dmitry', codeLength: 36, achievedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-  { rank: 5, nickname: 'QuantumCoder', codeLength: 38, achievedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-  { rank: 6, nickname: 'PythonHero', codeLength: 42, achievedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-  { rank: 7, nickname: 'AnnaDev', codeLength: 45, achievedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-  { rank: 8, nickname: 'DreamCoder', codeLength: 48, achievedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
-  { rank: 9, nickname: 'LeraDev', codeLength: 52, achievedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-  { rank: 10, nickname: 'Alex', codeLength: 55, achievedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
+  { rank: 1, userId: 'mock-1', nickname: 'Leonard', avatarUrl: null, codeLength: 28, achievedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) },
+  { rank: 2, userId: 'mock-2', nickname: 'Anna', avatarUrl: null, codeLength: 31, achievedAt: new Date(Date.now() - 5 * 60 * 60 * 1000) },
+  { rank: 3, userId: 'mock-3', nickname: 'CodeNinja', avatarUrl: null, codeLength: 34, achievedAt: new Date(Date.now() - 12 * 60 * 60 * 1000) },
+  { rank: 4, userId: 'mock-4', nickname: 'Dmitry', avatarUrl: null, codeLength: 36, achievedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+  { rank: 5, userId: 'mock-5', nickname: 'QuantumCoder', avatarUrl: null, codeLength: 38, achievedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+  { rank: 6, userId: 'mock-6', nickname: 'PythonHero', avatarUrl: null, codeLength: 42, achievedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+  { rank: 7, userId: 'mock-7', nickname: 'AnnaDev', avatarUrl: null, codeLength: 45, achievedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+  { rank: 8, userId: 'mock-8', nickname: 'DreamCoder', avatarUrl: null, codeLength: 48, achievedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
+  { rank: 9, userId: 'mock-9', nickname: 'LeraDev', avatarUrl: null, codeLength: 52, achievedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
+  { rank: 10, userId: 'mock-10', nickname: 'Alex', avatarUrl: null, codeLength: 55, achievedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000) },
 ];
 
 // Глобальный рейтинг по ОЧКАМ (для главной страницы)
@@ -171,11 +171,11 @@ export const mockRecentRecords = [
 
 export const mockTaskLeaderboard: Record<string, LeaderboardEntry[]> = {
   'sum-numbers': [
-    { rank: 1, nickname: 'QuantumCoder', codeLength: 21, achievedAt: new Date(Date.now() - 45 * 60 * 1000) },
-    { rank: 2, nickname: 'PythonHero', codeLength: 21, achievedAt: new Date(Date.now() - 4 * 60 * 1000) },
-    { rank: 3, nickname: 'AnnaDev', codeLength: 23, achievedAt: new Date(Date.now() - 25 * 60 * 1000) },
-    { rank: 4, nickname: 'DreamCoder', codeLength: 28, achievedAt: new Date(Date.now() - 60 * 1000) },
-    { rank: 5, nickname: 'LeraDev', codeLength: 34, achievedAt: new Date(Date.now() - 30 * 60 * 1000) },
+    { rank: 1, userId: 'mock-sum-1', nickname: 'QuantumCoder', avatarUrl: null, codeLength: 21, achievedAt: new Date(Date.now() - 45 * 60 * 1000) },
+    { rank: 2, userId: 'mock-sum-2', nickname: 'PythonHero', avatarUrl: null, codeLength: 21, achievedAt: new Date(Date.now() - 4 * 60 * 1000) },
+    { rank: 3, userId: 'mock-sum-3', nickname: 'AnnaDev', avatarUrl: null, codeLength: 23, achievedAt: new Date(Date.now() - 25 * 60 * 1000) },
+    { rank: 4, userId: 'mock-sum-4', nickname: 'DreamCoder', avatarUrl: null, codeLength: 28, achievedAt: new Date(Date.now() - 60 * 1000) },
+    { rank: 5, userId: 'mock-sum-5', nickname: 'LeraDev', avatarUrl: null, codeLength: 34, achievedAt: new Date(Date.now() - 30 * 60 * 1000) },
   ],
   'fibonacci': mockLeaderboard,
 };

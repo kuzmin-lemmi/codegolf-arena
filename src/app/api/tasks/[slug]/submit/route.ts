@@ -8,6 +8,11 @@ import { executeCode } from '@/lib/piston';
 import { generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
 import { getPassPoints } from '@/lib/points';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { enqueueSubmit, SubmitQueueOverflowError } from '@/lib/submit-queue';
+import type { TaskTier } from '@/types';
+
+const OUTPUT_LIMIT_BYTES = 50 * 1024;
+const TOTAL_TIMEOUT_MS = 10_000;
 
 export async function POST(
   request: NextRequest,
@@ -85,51 +90,113 @@ export async function POST(
       );
     }
 
-    const codeLength = calculateCodeLength(code);
-    const constraints = JSON.parse(task.constraintsJson);
-    const functionArgs = JSON.parse(task.functionArgs);
+    const runSubmission = async () => {
+      const codeLength = calculateCodeLength(code);
+      const constraints = JSON.parse(task.constraintsJson);
+      const functionArgs = JSON.parse(task.functionArgs);
 
-    // Проверка на запрещённые токены
-    for (const token of constraints.forbidden_tokens || []) {
-      if (code.includes(token)) {
-        return NextResponse.json(
-          { success: false, error: `Запрещённый токен: ${token}` },
-          { status: 400 }
-        );
+      // Проверка на запрещённые токены
+      for (const token of constraints.forbidden_tokens || []) {
+        if (code.includes(token)) {
+          return NextResponse.json(
+            { success: false, error: `Запрещённый токен: ${token}` },
+            { status: 400 }
+          );
+        }
       }
-    }
 
-    // Выполняем тесты
-    const testResults = [];
-    let allPassed = true;
-    const startTime = Date.now();
+      const testResults: Array<{
+        index: number;
+        passed: boolean;
+        isHidden: boolean;
+        input?: string;
+        expected?: string;
+        actual?: string;
+        error?: string | null;
+      }> = [];
 
-    for (const testcase of task.testcases) {
-      const inputData = JSON.parse(testcase.inputData);
-      const args = inputData.args;
+      let allPassed = true;
+      let outputBytes = 0;
+      let timeLimitExceeded = false;
+      let outputLimitExceeded = false;
+      let submissionError: string | null = null;
 
-      // Формируем код для выполнения
-      const wrappedCode = generateTestCode(
-        code,
-        functionArgs,
-        args,
-        constraints.allowed_imports || []
-      );
+      const startTime = Date.now();
+      const deadline = startTime + TOTAL_TIMEOUT_MS;
 
-      try {
-        const result = await executeCode(wrappedCode, constraints.timeout_ms || 2000);
-        
+      for (const testcase of task.testcases) {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) {
+          timeLimitExceeded = true;
+          allPassed = false;
+          submissionError = 'Time limit exceeded';
+          testResults.push({
+            index: testcase.orderIndex,
+            passed: false,
+            isHidden: testcase.isHidden,
+            error: 'Time limit exceeded',
+          });
+          break;
+        }
+
+        const inputData = JSON.parse(testcase.inputData);
+        const args = inputData.args;
+
+        const wrappedCode = generateTestCode(
+          code,
+          functionArgs,
+          args,
+          constraints.allowed_imports || []
+        );
+
+        const perTestTimeout = Math.min(constraints.timeout_ms || 2000, remainingMs);
+        const signal = AbortSignal.timeout(perTestTimeout);
+
+        const result = await executeCode(wrappedCode, perTestTimeout, signal);
+
+        const stdoutBytes = Buffer.byteLength(result.stdout || '', 'utf8');
+        const stderrBytes = Buffer.byteLength(result.stderr || '', 'utf8');
+        outputBytes += stdoutBytes + stderrBytes;
+
+        if (outputBytes > OUTPUT_LIMIT_BYTES) {
+          outputLimitExceeded = true;
+          allPassed = false;
+          submissionError = 'Output limit exceeded';
+          testResults.push({
+            index: testcase.orderIndex,
+            passed: false,
+            isHidden: testcase.isHidden,
+            error: 'Output limit exceeded',
+          });
+          break;
+        }
+
+        if (result.error && /aborted/i.test(result.error)) {
+          timeLimitExceeded = true;
+          allPassed = false;
+          submissionError = 'Time limit exceeded';
+          testResults.push({
+            index: testcase.orderIndex,
+            passed: false,
+            isHidden: testcase.isHidden,
+            error: 'Time limit exceeded',
+          });
+          break;
+        }
+
         const actualOutput = result.output.trim();
         const expectedOutput = testcase.expectedOutput.trim();
         const passed = actualOutput === expectedOutput;
 
         if (!passed) allPassed = false;
+        if (!passed && !submissionError && result.error) {
+          submissionError = result.error;
+        }
 
         testResults.push({
           index: testcase.orderIndex,
           passed,
           isHidden: testcase.isHidden,
-          // Показываем детали только для открытых тестов
           ...(testcase.isHidden
             ? {}
             : {
@@ -139,141 +206,168 @@ export async function POST(
               }),
           error: result.error || null,
         });
-      } catch (error: any) {
-        allPassed = false;
-        testResults.push({
-          index: testcase.orderIndex,
-          passed: false,
-          isHidden: testcase.isHidden,
-          error: error.message || 'Execution error',
-        });
       }
-    }
 
-    const runtimeMs = Date.now() - startTime;
-    const testsPassed = testResults.filter((t) => t.passed).length;
-    const testsTotal = testResults.length;
-    const status = allPassed ? 'pass' : 'fail';
+      if (timeLimitExceeded && !submissionError) {
+        submissionError = 'Time limit exceeded';
+      }
+      if (outputLimitExceeded && !submissionError) {
+        submissionError = 'Output limit exceeded';
+      }
 
-    let submissionId: string | null = null;
-    let place: number | null = null;
-    let isNewBest = false;
-    let pointsEarned = 0;
-    let pointsBreakdown: string[] = [];
+      const runtimeMs = Date.now() - startTime;
+      const testsPassed = testResults.filter((t) => t.passed).length;
+      const testsTotal = testResults.length;
+      const status = allPassed ? 'pass' : 'fail';
 
-    if (currentUser) {
-      const submission = await prisma.submission.create({
-        data: {
-          taskId: task.id,
-          userId: currentUser.id,
-          code,
-          codeLength,
-          status,
-          testsPassed,
-          testsTotal,
-          runtimeMs,
-        },
-      });
+      let submissionId: string | null = null;
+      let place: number | null = null;
+      let isNewBest = false;
+      let pointsEarned = 0;
+      let pointsBreakdown: string[] = [];
 
-      submissionId = submission.id;
-
-      // Если PASS — обновляем best_submission и начисляем очки
-      if (allPassed) {
-        const existingBest = await prisma.bestSubmission.findUnique({
-          where: {
-            taskId_userId: {
-              taskId: task.id,
-              userId: currentUser.id,
-            },
-          },
-        });
-
-        // Обновляем только если это лучший результат
-        if (!existingBest || codeLength < existingBest.codeLength) {
-          await prisma.bestSubmission.upsert({
-            where: {
-              taskId_userId: {
-                taskId: task.id,
-                userId: currentUser.id,
-              },
-            },
-            update: {
-              submissionId: submission.id,
-              codeLength,
-              achievedAt: new Date(),
-            },
-            create: {
-              taskId: task.id,
-              userId: currentUser.id,
-              submissionId: submission.id,
-              codeLength,
-              achievedAt: new Date(),
-            },
-          });
-
-          isNewBest = true;
-        }
-
-        // Вычисляем место
-        const betterOrEqual = await prisma.bestSubmission.count({
-          where: {
-            taskId: task.id,
-            OR: [
-              { codeLength: { lt: codeLength } },
-              {
-                codeLength,
-                achievedAt: { lt: new Date() },
-              },
-            ],
-          },
-        });
-
-        place = betterOrEqual + 1;
-
-        // Начисляем очки только за ПЕРВЫЙ PASS (упрощённая версия для MVP)
-        if (!existingBest) {
-          pointsEarned = getPassPoints(task.tier);
-          pointsBreakdown.push(`PASS (${task.tier}): +${pointsEarned}`);
-
-          // Обновляем totalPoints пользователя
-          await prisma.user.update({
-            where: { id: currentUser.id },
+      if (currentUser) {
+        const transactionResult = await prisma.$transaction(async (tx) => {
+          const submission = await tx.submission.create({
             data: {
-              totalPoints: {
-                increment: pointsEarned,
-              },
+              taskId: task.id,
+              userId: currentUser.id,
+              code,
+              codeLength,
+              status,
+              testsPassed,
+              testsTotal,
+              runtimeMs,
+              errorMsg: submissionError,
             },
           });
-        }
-      }
-    }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          submissionId,
-          status,
-          length: codeLength,
-          testsPassed,
-          testsTotal,
-          place,
-          isNewBest,
-          pointsEarned,
-          pointsBreakdown,
-          // Показываем детали только для открытых тестов
-          details: testResults
-            .filter((t) => !t.isHidden)
-            .map(({ isHidden, ...rest }) => rest),
-        },
-      },
-      {
-        headers: {
-          'X-RateLimit-Limit': '10',
-          'X-RateLimit-Remaining': String(rateLimitResult.remaining || 0),
-        },
+          let txIsNewBest = false;
+          let txPointsEarned = 0;
+          let txPointsBreakdown: string[] = [];
+          let txPlace: number | null = null;
+
+          if (allPassed) {
+            const existingBest = await tx.bestSubmission.findUnique({
+              where: {
+                taskId_userId: {
+                  taskId: task.id,
+                  userId: currentUser.id,
+                },
+              },
+            });
+
+            if (!existingBest || codeLength < existingBest.codeLength) {
+              await tx.bestSubmission.upsert({
+                where: {
+                  taskId_userId: {
+                    taskId: task.id,
+                    userId: currentUser.id,
+                  },
+                },
+                update: {
+                  submissionId: submission.id,
+                  codeLength,
+                  achievedAt: new Date(),
+                },
+                create: {
+                  taskId: task.id,
+                  userId: currentUser.id,
+                  submissionId: submission.id,
+                  codeLength,
+                  achievedAt: new Date(),
+                },
+              });
+
+              txIsNewBest = true;
+            }
+
+            const ranks = await tx.$queryRaw<Array<{ place: number }>>`
+              SELECT rnk AS place
+              FROM (
+                SELECT
+                  task_id,
+                  user_id,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY task_id
+                    ORDER BY code_length ASC, achieved_at ASC, user_id ASC
+                  ) AS rnk
+                FROM best_submissions
+              ) ranked
+              WHERE task_id = ${task.id} AND user_id = ${currentUser.id}
+            `;
+
+            txPlace = ranks?.[0]?.place ?? null;
+
+            if (!existingBest) {
+              txPointsEarned = getPassPoints(task.tier as TaskTier);
+              txPointsBreakdown.push(`PASS (${task.tier}): +${txPointsEarned}`);
+
+              await tx.user.update({
+                where: { id: currentUser.id },
+                data: {
+                  totalPoints: {
+                    increment: txPointsEarned,
+                  },
+                },
+              });
+            }
+          }
+
+          return {
+            submissionId: submission.id,
+            isNewBest: txIsNewBest,
+            pointsEarned: txPointsEarned,
+            pointsBreakdown: txPointsBreakdown,
+            place: txPlace,
+          };
+        });
+
+        submissionId = transactionResult.submissionId;
+        isNewBest = transactionResult.isNewBest;
+        pointsEarned = transactionResult.pointsEarned;
+        pointsBreakdown = transactionResult.pointsBreakdown;
+        place = transactionResult.place;
       }
-    );
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            submissionId,
+            status,
+            length: codeLength,
+            testsPassed,
+            testsTotal,
+            place,
+            isNewBest,
+            pointsEarned,
+            pointsBreakdown,
+            details: testResults
+              .filter((t) => !t.isHidden)
+              .map(({ isHidden, ...rest }) => rest),
+          },
+        },
+        {
+          headers: {
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining || 0),
+          },
+        }
+      );
+    };
+
+    try {
+      return await enqueueSubmit(runSubmission);
+    } catch (error) {
+      if (error instanceof SubmitQueueOverflowError) {
+        return NextResponse.json(
+          { success: false, error: 'Server overloaded, try later' },
+          { status: 503 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error submitting solution:', error);
     return NextResponse.json(

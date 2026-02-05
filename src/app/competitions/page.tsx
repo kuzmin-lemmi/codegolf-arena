@@ -5,6 +5,7 @@ import { Trophy, Calendar, Users, Clock, ArrowRight, Lock } from 'lucide-react';
 import { Card, Button, TierBadge } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatDate, formatTimeRemaining } from '@/lib/utils';
+import type { TaskTier } from '@/types';
 
 export const metadata = {
   title: 'Соревнования — Арена однострочников',
@@ -159,7 +160,7 @@ function CompetitionCard({
                 key={ct.id} 
                 className="inline-flex items-center gap-1.5 px-2 py-1 bg-background-tertiary rounded text-sm"
               >
-                <TierBadge tier={ct.task.tier} size="sm" />
+                <TierBadge tier={ct.task.tier as TaskTier} className="text-xs" />
                 {ct.task.title}
               </span>
             ))}

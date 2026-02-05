@@ -126,7 +126,7 @@ export interface TaskDetail {
 
 export interface LeaderboardEntry {
   rank: number;
-  oderId: string;
+  userId: string;
   nickname: string;
   avatarUrl: string | null;
   codeLength: number;
@@ -135,7 +135,7 @@ export interface LeaderboardEntry {
 
 export interface GlobalLeaderboardEntry {
   rank: number;
-  oderId: string;
+  userId: string;
   nickname: string;
   avatarUrl: string | null;
   points: number;

@@ -9,15 +9,26 @@ import {
 } from '@/lib/auth';
 
 const SESSION_COOKIE_NAME = 'arena_session';
+const OAUTH_STATE_COOKIE = 'arena_oauth_state';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней в секундах
+
+// Безопасная проверка returnTo против open redirect
+function getSafeReturnTo(returnToCookie: string | undefined): string {
+  if (!returnToCookie) return '/';
+  if (!returnToCookie.startsWith('/')) return '/';
+  if (returnToCookie.startsWith('//')) return '/'; // Protect against protocol-relative URLs
+  return returnToCookie;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const stateFromUrl = searchParams.get('state');
+    const stateFromCookie = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
     const returnToCookie = request.cookies.get('arena_return_to')?.value;
-    const returnTo = returnToCookie && returnToCookie.startsWith('/') ? returnToCookie : '/';
+    const returnTo = getSafeReturnTo(returnToCookie);
 
     // Проверка на ошибки OAuth
     if (error) {
@@ -27,6 +38,12 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       return NextResponse.redirect(new URL('/auth?error=no_code', request.url));
+    }
+
+    // CSRF validation: check state parameter
+    if (!stateFromUrl || !stateFromCookie || stateFromUrl !== stateFromCookie) {
+      console.error('OAuth CSRF validation failed: state mismatch');
+      return NextResponse.redirect(new URL('/auth?error=csrf_failed', request.url));
     }
 
     // Обмен кода на токен
@@ -52,7 +69,16 @@ export async function GET(request: NextRequest) {
       path: '/',
     });
 
+    // Очищаем временные cookies
     response.cookies.set('arena_return_to', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    response.cookies.set(OAUTH_STATE_COOKIE, '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

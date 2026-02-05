@@ -2,10 +2,15 @@
 
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui';
 import { SubmitForm } from '@/components/task/SubmitForm';
+import { TaskTabs } from '@/components/task/TaskTabs';
 import { useAuth } from '@/context/AuthContext';
 import { toPythonLiteral } from '@/lib/python-serializer';
+import type { LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
+import type { SubmissionStatus } from '@/types';
 
 interface TaskPageClientProps {
   taskSlug: string;
@@ -15,6 +20,8 @@ interface TaskPageClientProps {
     expectedOutput: string;
   }>;
   allowedImports: string[];
+  leaderboard: LeaderboardEntry[];
+  currentUserRank?: number;
 }
 
 export function TaskPageClient({
@@ -22,8 +29,12 @@ export function TaskPageClient({
   functionArgs,
   testcases,
   allowedImports,
+  leaderboard,
+  currentUserRank,
 }: TaskPageClientProps) {
   const { isLoggedIn } = useAuth();
+  const router = useRouter();
+  const [solutionsRefreshKey, setSolutionsRefreshKey] = useState(0);
 
   const formatArgs = (args: any[]) =>
     args.length > 0 ? args.map(toPythonLiteral).join(', ') : '';
@@ -38,6 +49,12 @@ export function TaskPageClient({
           functionArgs={functionArgs}
           testcases={testcases}
           allowedImports={allowedImports}
+          onSubmitSuccess={(result: { status: SubmissionStatus }) => {
+            if (result.status === 'pass') {
+              setSolutionsRefreshKey((prev) => prev + 1);
+              router.refresh();
+            }
+          }}
         />
       </Card>
 
@@ -73,6 +90,15 @@ export function TaskPageClient({
           </div>
         </Card>
       )}
+
+      <Card padding="lg">
+        <TaskTabs
+          leaderboard={leaderboard}
+          taskSlug={taskSlug}
+          refreshKey={solutionsRefreshKey}
+          currentUserRank={currentUserRank}
+        />
+      </Card>
     </div>
   );
 }
