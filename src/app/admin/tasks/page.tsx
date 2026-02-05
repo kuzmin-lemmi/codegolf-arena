@@ -11,14 +11,18 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { mockTasks } from '@/lib/mock-data';
 import { cn, formatDate } from '@/lib/utils';
 
 export default function AdminTasksPage() {
   const router = useRouter();
   const { user, isLoading, isLoggedIn } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [tasks, setTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [weeklyTaskId, setWeeklyTaskId] = useState<string | null>(null);
+  const [weeklyId, setWeeklyId] = useState<string | null>(null);
+  const [tierFilter, setTierFilter] = useState<'all' | 'bronze' | 'silver' | 'gold'>('all');
 
   // Редирект если не админ
   useEffect(() => {
@@ -35,25 +39,147 @@ export default function AdminTasksPage() {
     );
   }
 
-  const filteredTasks = tasks.filter((task) =>
-    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    task.slug.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    if (!user?.isAdmin) return;
 
-  const handleToggleStatus = (taskId: string) => {
+    const fetchTasks = async () => {
+      setIsFetching(true);
+      setError(null);
+      try {
+        const [tasksRes, weeklyRes] = await Promise.all([
+          fetch('/api/admin/tasks', { credentials: 'include' }),
+          fetch('/api/admin/weekly', { credentials: 'include' }),
+        ]);
+
+        const tasksJson = await tasksRes.json();
+        if (!tasksJson.success) {
+          setError(tasksJson.error || 'Не удалось загрузить задачи');
+          return;
+        }
+
+        const weeklyJson = await weeklyRes.json();
+        if (!weeklyJson.success) {
+          setError(weeklyJson.error || 'Не удалось загрузить турнир недели');
+          return;
+        }
+
+        setTasks(tasksJson.data || []);
+
+        const weekly = weeklyJson.data;
+        if (weekly) {
+          setWeeklyTaskId(weekly.taskId);
+          setWeeklyId(weekly.id);
+        } else {
+          setWeeklyTaskId(null);
+          setWeeklyId(null);
+        }
+      } catch (err) {
+        setError('Не удалось загрузить задачи');
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchTasks();
+  }, [user?.isAdmin]);
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.slug.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTier = tierFilter === 'all' || task.tier === tierFilter;
+    return matchesSearch && matchesTier;
+  });
+
+  const handleToggleStatus = async (taskId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'published' ? 'draft' : 'published';
+    const res = await fetch(`/api/admin/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status: nextStatus }),
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      alert(json.error || 'Не удалось изменить статус');
+      return;
+    }
+
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId
-          ? { ...t, status: t.status === 'published' ? 'draft' : 'published' }
-          : t
-      )
+      prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
     );
   };
 
-  const handleDelete = (taskId: string) => {
+  const handleDelete = async (taskId: string) => {
     if (confirm('Удалить задачу? Это действие нельзя отменить.')) {
+      const res = await fetch(`/api/admin/tasks/${taskId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || 'Не удалось удалить задачу');
+        return;
+      }
+
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
     }
+  };
+
+  const handleToggleWeekly = async (taskId: string, checked: boolean) => {
+    if (checked) {
+      if (weeklyTaskId && weeklyTaskId !== taskId) {
+        const ok = confirm('Заменить текущую задачу недели на эту?');
+        if (!ok) return;
+      }
+
+      const now = new Date();
+      const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const res = await fetch('/api/admin/weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          taskId,
+          startsAt: now.toISOString(),
+          endsAt: weekLater.toISOString(),
+          isActive: true,
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || 'Не удалось назначить задачу недели');
+        return;
+      }
+
+      setWeeklyTaskId(taskId);
+      setWeeklyId(json.data?.id || null);
+      return;
+    }
+
+    if (!weeklyId) {
+      setWeeklyTaskId(null);
+      return;
+    }
+
+    const res = await fetch('/api/admin/weekly', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: weeklyId, isActive: false }),
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      alert(json.error || 'Не удалось снять задачу недели');
+      return;
+    }
+
+    setWeeklyTaskId(null);
   };
 
   return (
@@ -84,7 +210,7 @@ export default function AdminTasksPage() {
 
       <div className="container mx-auto px-4 py-6">
         {/* Search */}
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <Input
             placeholder="Поиск по названию или slug..."
             value={searchQuery}
@@ -92,10 +218,37 @@ export default function AdminTasksPage() {
             icon={Search}
             className="max-w-md"
           />
+          <div className="flex items-center gap-2">
+            {(['all', 'bronze', 'silver', 'gold'] as const).map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => setTierFilter(tier)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  tierFilter === tier
+                    ? 'border-accent-blue bg-accent-blue/10 text-accent-blue'
+                    : 'border-border text-text-secondary hover:border-border/70'
+                )}
+              >
+                {tier === 'all' ? 'Все' : tier[0].toUpperCase() + tier.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Tasks Table */}
         <Card padding="none">
+          {error && (
+            <div className="px-4 py-3 text-sm text-accent-red border-b border-border">
+              {error}
+            </div>
+          )}
+          {isFetching && (
+            <div className="px-4 py-6 text-center text-text-secondary">
+              Загрузка задач...
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -105,6 +258,7 @@ export default function AdminTasksPage() {
                   <th className="px-4 py-3 font-medium">Сложность</th>
                   <th className="px-4 py-3 font-medium">Режим</th>
                   <th className="px-4 py-3 font-medium">Статус</th>
+                  <th className="px-4 py-3 font-medium">Неделя</th>
                   <th className="px-4 py-3 font-medium">Тестов</th>
                   <th className="px-4 py-3 font-medium text-right">Действия</th>
                 </tr>
@@ -143,7 +297,7 @@ export default function AdminTasksPage() {
                     </td>
                     <td className="px-4 py-4">
                       <button
-                        onClick={() => handleToggleStatus(task.id)}
+                        onClick={() => handleToggleStatus(task.id, task.status)}
                         className={cn(
                           'flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors',
                           task.status === 'published'
@@ -164,8 +318,17 @@ export default function AdminTasksPage() {
                         )}
                       </button>
                     </td>
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={weeklyTaskId === task.id}
+                        onChange={(e) => handleToggleWeekly(task.id, e.target.checked)}
+                        className="h-4 w-4 accent-accent-blue"
+                        title="Сделать задачей недели"
+                      />
+                    </td>
                     <td className="px-4 py-4 text-text-secondary">
-                      6 тестов
+                      {task.testcasesCount ?? 0} тестов
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2">

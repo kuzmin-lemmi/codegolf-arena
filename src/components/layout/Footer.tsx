@@ -1,7 +1,7 @@
 // src/components/layout/Footer.tsx
 
 import Link from 'next/link';
-import { Code2, Github, BookOpen, Mail, Trophy, Swords } from 'lucide-react';
+import { Code2, Github, BookOpen, Mail, Trophy, Swords, MessageCircle } from 'lucide-react';
 
 const primaryLinks = [
   { name: 'Задачи', href: '/tasks', icon: Code2 },
@@ -12,6 +12,7 @@ const primaryLinks = [
 
 const utilityLinks = [
   { name: 'GitHub', href: 'https://github.com/kuzmin-lemmi/codegolf-arena', icon: Github, external: true },
+  { name: 'Telegram чат', href: 'https://t.me/codegolf_arena', icon: MessageCircle, external: true },
   { name: 'Контакты', href: 'mailto:contact@arena-oneliners.ru', icon: Mail, external: true },
 ];
 

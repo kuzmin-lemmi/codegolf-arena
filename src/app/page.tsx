@@ -1,7 +1,7 @@
 // src/app/page.tsx
 
 import Link from 'next/link';
-import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users } from 'lucide-react';
+import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users, MessageCircle } from 'lucide-react';
 import { Card, TierBadge, Button, Avatar } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatTimeRemaining } from '@/lib/utils';
@@ -152,6 +152,12 @@ export default async function HomePage() {
                   Рейтинг
                 </Button>
               </Link>
+              <a href="https://t.me/codegolf_arena" target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="lg">
+                  <MessageCircle className="w-5 h-5" />
+                  Чат Telegram
+                </Button>
+              </a>
             </div>
           </div>
         </div>

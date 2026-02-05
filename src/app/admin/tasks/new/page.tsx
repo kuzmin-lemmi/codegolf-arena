@@ -29,12 +29,20 @@ export default function NewTaskPage() {
   }
 
   const handleSubmit = async (data: any) => {
-    // TODO: отправка на API
-    console.log('Creating task:', data);
-    
-    // Mock: добавление в localStorage или API
-    alert('Задача создана! (В реальности будет отправка на API)');
-    router.push('/admin/tasks');
+    const res = await fetch('/api/admin/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      alert(json.error || 'Не удалось создать задачу');
+      return;
+    }
+
+    router.push(`/admin/tasks/${json.data.id}/edit`);
   };
 
   return (

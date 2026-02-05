@@ -11,17 +11,20 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { mockTasks, mockWeeklyChallenge } from '@/lib/mock-data';
 import { cn, formatDate } from '@/lib/utils';
 
 export default function AdminWeeklyPage() {
   const router = useRouter();
   const { user, isLoading, isLoggedIn } = useAuth();
   
-  const [selectedTaskId, setSelectedTaskId] = useState(mockWeeklyChallenge.task.id);
-  const [startDate, setStartDate] = useState(formatDateInput(mockWeeklyChallenge.startsAt));
-  const [endDate, setEndDate] = useState(formatDateInput(mockWeeklyChallenge.endsAt));
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [weeklyId, setWeeklyId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Редирект если не админ
@@ -31,6 +34,51 @@ export default function AdminWeeklyPage() {
     }
   }, [isLoading, isLoggedIn, user, router]);
 
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+
+    const fetchData = async () => {
+      setIsFetching(true);
+      setError(null);
+      try {
+        const [tasksRes, weeklyRes] = await Promise.all([
+          fetch('/api/admin/tasks', { credentials: 'include' }),
+          fetch('/api/admin/weekly', { credentials: 'include' }),
+        ]);
+
+        const tasksJson = await tasksRes.json();
+        if (!tasksJson.success) throw new Error(tasksJson.error || 'Не удалось загрузить задачи');
+
+        const weeklyJson = await weeklyRes.json();
+        if (!weeklyJson.success) throw new Error(weeklyJson.error || 'Не удалось загрузить турнир недели');
+
+        const published = (tasksJson.data || []).filter((t: any) => t.status === 'published');
+        setTasks(published);
+
+        const weekly = weeklyJson.data;
+        if (weekly) {
+          setWeeklyId(weekly.id);
+          setSelectedTaskId(weekly.taskId);
+          setStartDate(formatDateInput(new Date(weekly.startsAt)));
+          setEndDate(formatDateInput(new Date(weekly.endsAt)));
+          setIsActive(weekly.isActive);
+        } else if (published.length > 0) {
+          setSelectedTaskId(published[0].id);
+          const now = new Date();
+          const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          setStartDate(formatDateInput(now));
+          setEndDate(formatDateInput(weekLater));
+        }
+      } catch (err: any) {
+        setError(err.message || 'Не удалось загрузить данные');
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.isAdmin]);
+
   if (isLoading || !user?.isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -39,20 +87,39 @@ export default function AdminWeeklyPage() {
     );
   }
 
-  const publishedTasks = mockTasks.filter((t) => t.status === 'published');
+  const publishedTasks = tasks;
   const selectedTask = publishedTasks.find((t) => t.id === selectedTaskId);
 
   const handleSave = async () => {
     setIsSaving(true);
-    
-    // TODO: API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    alert('Турнир недели обновлён!');
-    setIsSaving(false);
+
+    try {
+      const res = await fetch('/api/admin/weekly', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          taskId: selectedTaskId,
+          startsAt: new Date(startDate).toISOString(),
+          endsAt: new Date(endDate).toISOString(),
+          isActive,
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || 'Не удалось сохранить');
+        return;
+      }
+
+      setWeeklyId(json.data.id);
+      alert('Турнир недели обновлён!');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const timeRemaining = new Date(endDate).getTime() - Date.now();
+  const timeRemaining = endDate ? new Date(endDate).getTime() - Date.now() : 0;
   const daysRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
 
   return (
@@ -81,12 +148,25 @@ export default function AdminWeeklyPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
+            {error && (
+              <Card padding="md" className="border-accent-red/30">
+                <div className="flex items-center gap-2 text-accent-red text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </div>
+              </Card>
+            )}
             {/* Task Selection */}
             <Card padding="lg">
               <h2 className="text-lg font-semibold mb-4">Выбор задачи</h2>
               
-              <div className="space-y-3">
-                {publishedTasks.map((task) => (
+              {isFetching ? (
+                <div className="text-text-secondary">Загрузка...</div>
+              ) : publishedTasks.length === 0 ? (
+                <div className="text-text-secondary">Нет опубликованных задач</div>
+              ) : (
+                <div className="space-y-3">
+                  {publishedTasks.map((task) => (
                   <button
                     key={task.id}
                     type="button"
@@ -120,8 +200,9 @@ export default function AdminWeeklyPage() {
                       </div>
                     </div>
                   </button>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
 
             {/* Dates */}
@@ -195,6 +276,7 @@ export default function AdminWeeklyPage() {
                 onClick={handleSave}
                 loading={isSaving}
                 size="lg"
+                disabled={!selectedTaskId || !startDate || !endDate || new Date(startDate) >= new Date(endDate)}
               >
                 Сохранить изменения
               </Button>
@@ -259,30 +341,16 @@ export default function AdminWeeklyPage() {
               </Card>
             )}
 
-            {/* Stats */}
-            <Card padding="lg">
-              <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">
-                Статистика турнира
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Участников
-                  </span>
-                  <span className="font-bold">47</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary">Решений</span>
-                  <span className="font-bold">156</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-text-secondary">Лучший результат</span>
-                  <span className="font-bold text-accent-green">28 симв.</span>
-                </div>
-              </div>
-            </Card>
+            {weeklyId && (
+              <Card padding="lg">
+                <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide mb-4">
+                  Идентификатор турнира
+                </h3>
+                <code className="text-sm text-text-secondary bg-background-tertiary p-2 rounded block">
+                  {weeklyId}
+                </code>
+              </Card>
+            )}
           </div>
         </div>
       </div>

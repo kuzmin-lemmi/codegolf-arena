@@ -16,6 +16,7 @@ const navigation = [
   { name: 'Соревнования', href: '/competitions' },
   { name: 'Рейтинг', href: '/leaderboard' },
   { name: 'Правила', href: '/rules' },
+  { name: 'Чат', href: 'https://t.me/codegolf_arena', external: true },
 ];
 
 export function Header() {
@@ -50,18 +51,30 @@ export function Header() {
           {/* Навигация */}
           <nav className="hidden md:flex items-center gap-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = !('external' in item) && pathname === item.href;
+              const className = cn(
+                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                isActive
+                  ? 'text-accent-blue bg-accent-blue/10'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-background-tertiary'
+              );
+
+              if ('external' in item && item.external) {
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    className={className}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {item.name}
+                  </a>
+                );
+              }
+
               return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                    isActive
-                      ? 'text-accent-blue bg-accent-blue/10'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-background-tertiary'
-                  )}
-                >
+                <Link key={item.name} href={item.href} className={className}>
                   {item.name}
                 </Link>
               );

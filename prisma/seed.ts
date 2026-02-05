@@ -1,6 +1,7 @@
 // prisma/seed.ts
 
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -21,10 +22,15 @@ async function main() {
   
   console.log('🗑️ Cleared database');
 
-  // Создаём только админа
+  // Создаём админа (email+пароль для входа)
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin12345!';
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.user.create({
     data: {
       stepikUserId: 1,
+      email: adminEmail.toLowerCase(),
+      passwordHash,
       displayName: 'Admin',
       nickname: 'admin',
       nicknameKey: 'admin',

@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronUp, Play
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { cn, validateOneliner } from '@/lib/utils';
 
 interface TestCase {
   id: string;
@@ -35,7 +35,7 @@ interface TaskFormData {
 
 interface TaskFormProps {
   initialData?: Partial<TaskFormData>;
-  onSubmit: (data: TaskFormData) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
 }
 
 const defaultData: TaskFormData = {
@@ -61,6 +61,10 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [expandedSection, setExpandedSection] = useState<string | null>('basic');
+  const [validationCode, setValidationCode] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any | null>(null);
 
   const updateField = <K extends keyof TaskFormData>(field: K, value: TaskFormData[K]) => {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -103,6 +107,63 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
     );
   };
 
+  const parseJsonArgs = (value: string, index: number): any[] | null => {
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed)) {
+        setErrors((prev) => ({ ...prev, testcases: `Тест ${index + 1}: args должен быть массивом` }));
+        return null;
+      }
+      return parsed;
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, testcases: `Тест ${index + 1}: некорректный JSON` }));
+      return null;
+    }
+  };
+
+  const buildPayload = () => {
+    setErrors((prev) => ({ ...prev, testcases: '' }));
+    const functionArgs = data.functionArgs
+      .split(',')
+      .map((arg) => arg.trim())
+      .filter(Boolean);
+
+    if (functionArgs.length === 0) {
+      setErrors((prev) => ({ ...prev, functionArgs: 'Укажите аргументы функции' }));
+      return null;
+    }
+
+    const testcases = [] as Array<{ inputData: { args: any[] }; expectedOutput: string; isHidden: boolean }>;
+    for (let i = 0; i < data.testcases.length; i++) {
+      const tc = data.testcases[i];
+      const parsedArgs = parseJsonArgs(tc.args, i);
+      if (!parsedArgs) return null;
+      testcases.push({
+        inputData: { args: parsedArgs },
+        expectedOutput: tc.expectedOutput,
+        isHidden: tc.isHidden,
+      });
+    }
+
+    return {
+      slug: data.slug.trim(),
+      title: data.title.trim(),
+      tier: data.tier,
+      mode: data.mode,
+      statementMd: data.statementMd,
+      functionSignature: data.functionSignature.trim(),
+      functionArgs,
+      exampleInput: data.exampleInput,
+      exampleOutput: data.exampleOutput,
+      constraints: {
+        forbidden_tokens: splitCsv(data.forbiddenTokens),
+        allowed_imports: splitCsv(data.allowedImports),
+        timeout_ms: data.timeoutMs,
+      },
+      testcases,
+    };
+  };
+
   // Валидация
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -113,6 +174,7 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
     if (data.title.length < 3) newErrors.title = 'Минимум 3 символа';
     if (!data.statementMd) newErrors.statementMd = 'Условие обязательно';
     if (!data.functionSignature) newErrors.functionSignature = 'Сигнатура обязательна';
+    if (!data.functionArgs.trim()) newErrors.functionArgs = 'Аргументы обязательны';
     if (!data.exampleInput) newErrors.exampleInput = 'Пример ввода обязателен';
     if (!data.exampleOutput) newErrors.exampleOutput = 'Пример вывода обязателен';
 
@@ -131,13 +193,51 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
     
     if (!validate()) return;
 
+    const payload = buildPayload();
+    if (!payload) return;
+
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      await onSubmit(payload);
     } catch (error) {
       console.error('Submit error:', error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    setValidationError(null);
+    setValidationResult(null);
+
+    const validation = validateOneliner(validationCode);
+    if (!validation.valid) {
+      setValidationError(validation.error || 'Некорректный код');
+      return;
+    }
+
+    if (!validate()) return;
+    const payload = buildPayload();
+    if (!payload) return;
+
+    setIsValidating(true);
+    try {
+      const res = await fetch('/api/admin/tasks/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ task: payload, code: validationCode }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setValidationError(json.error || 'Не удалось проверить');
+        return;
+      }
+      setValidationResult(json.data);
+    } catch (error) {
+      setValidationError('Не удалось проверить');
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -271,6 +371,7 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
             value={data.functionArgs}
             onChange={(e) => updateField('functionArgs', e.target.value)}
             placeholder="s"
+            error={errors.functionArgs}
           />
         </div>
 
@@ -405,6 +506,93 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
         </Button>
       </FormSection>
 
+      {/* Validation */}
+      <FormSection
+        title="Проверка решения"
+        id="validation"
+        expanded={expandedSection === 'validation'}
+        onToggle={() => toggleSection('validation')}
+      >
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Код для проверки (одна строка выражения)
+          </label>
+          <textarea
+            value={validationCode}
+            onChange={(e) => setValidationCode(e.target.value)}
+            placeholder="len(s)"
+            rows={2}
+            className={cn(
+              'w-full px-4 py-3 bg-background-tertiary border rounded-lg resize-y font-mono text-sm',
+              'text-text-primary placeholder:text-text-muted',
+              'focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue/50'
+            )}
+          />
+          <p className="text-xs text-text-muted mt-2">
+            Код проверяется по тем же правилам, что и у учеников (одна строка, без запрещённых токенов)
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            icon={Play}
+            onClick={handleValidate}
+            loading={isValidating}
+          >
+            Прогнать тесты
+          </Button>
+        </div>
+
+        {validationError && (
+          <div className="mt-4 text-sm text-accent-red flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {validationError}
+          </div>
+        )}
+
+        {validationResult && (
+          <div className="mt-4 p-4 rounded-lg border border-border bg-background-tertiary/40">
+            <div className="font-semibold mb-2">
+              {validationResult.status === 'pass' ? 'PASS' : 'FAIL'}
+            </div>
+            <div className="text-sm text-text-secondary mb-3">
+              Пройдено тестов: {validationResult.testsPassed} из {validationResult.testsTotal}
+            </div>
+            {validationResult.errorMessage && (
+              <div className="text-sm text-accent-red mb-3">{validationResult.errorMessage}</div>
+            )}
+            {validationResult.details?.length > 0 && (
+              <div className="space-y-2">
+                {validationResult.details.map((detail: any) => (
+                  <div
+                    key={detail.index}
+                    className={cn(
+                      'p-3 rounded border text-sm',
+                      detail.passed ? 'border-accent-green/30' : 'border-accent-red/30'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>Тест {detail.index + 1}</span>
+                      <span className={detail.passed ? 'text-accent-green' : 'text-accent-red'}>
+                        {detail.passed ? 'OK' : 'FAIL'}
+                      </span>
+                    </div>
+                    <div className="text-text-secondary mt-2">
+                      <div>Ввод: {detail.input}</div>
+                      <div>Ожидалось: {detail.expected}</div>
+                      <div>Получено: {detail.actual}</div>
+                      {detail.error && <div className="text-accent-red">Ошибка: {detail.error}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </FormSection>
+
       {/* Submit */}
       <div className="flex items-center gap-4 pt-4 border-t border-border">
         <Button
@@ -486,4 +674,11 @@ function slugify(text: string): string {
     })
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+function splitCsv(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
