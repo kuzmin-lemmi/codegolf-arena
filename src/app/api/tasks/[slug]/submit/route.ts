@@ -282,7 +282,7 @@ export async function POST(
               txIsNewBest = true;
             }
 
-            const ranks = await tx.$queryRaw<Array<{ place: number }>>`
+            const ranks = await tx.$queryRaw<Array<{ place: bigint }>>`
               SELECT rnk AS place
               FROM (
                 SELECT
@@ -297,7 +297,8 @@ export async function POST(
               WHERE task_id = ${task.id} AND user_id = ${currentUser.id}
             `;
 
-            txPlace = ranks?.[0]?.place ?? null;
+            const rawPlace = ranks?.[0]?.place;
+            txPlace = rawPlace === undefined || rawPlace === null ? null : Number(rawPlace);
 
             if (!existingBest) {
               txPointsEarned = getPassPoints(task.tier as TaskTier);

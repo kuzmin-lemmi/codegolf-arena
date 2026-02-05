@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     });
 
     const bestRows = await prisma.$queryRaw<
-      Array<{ taskId: string; codeLength: number; nickname: string | null; displayName: string }>
+      Array<{ taskId: string; codeLength: bigint; nickname: string | null; displayName: string }>
     >`
       SELECT ranked.task_id AS taskId,
              ranked.code_length AS codeLength,
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       bestRows.map((row) => [
         row.taskId,
         {
-          length: row.codeLength,
+          length: Number(row.codeLength),
           nickname: row.nickname || row.displayName,
         },
       ])

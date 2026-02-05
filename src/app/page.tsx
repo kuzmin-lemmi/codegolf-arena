@@ -68,10 +68,9 @@ async function getHomePageData() {
       },
     });
 
-    // Последние решения
-    const recentSubmissions = await prisma.submission.findMany({
-      where: { status: 'pass' },
-      orderBy: { createdAt: 'desc' },
+    // Последние решения (только лучшие, без дублей по задаче/пользователю)
+    const recentBestSubmissions = await prisma.bestSubmission.findMany({
+      orderBy: { achievedAt: 'desc' },
       take: 5,
       include: {
         user: { select: { nickname: true, displayName: true } },
@@ -79,7 +78,7 @@ async function getHomePageData() {
       },
     });
 
-    const recentRecords = recentSubmissions.map((s) => ({
+    const recentRecords = recentBestSubmissions.map((s) => ({
       nickname: s.user.nickname || s.user.displayName,
       taskTitle: s.task.title,
       taskSlug: s.task.slug,
