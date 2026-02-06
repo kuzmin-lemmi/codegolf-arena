@@ -50,7 +50,7 @@ export default function RulesPage() {
                 <RuleItem
                   icon={CheckCircle}
                   title="Локальная проверка"
-                  description="Сначала проверь код локально (бесплатно, без ограничений). Когда всё работает — отправляй на сервер."
+                  description="Сначала проверь код локально на открытых тестах. При отправке в рейтинг сервер запускает полный набор (включая скрытые кейсы)."
                 />
               </div>
             </Card>
@@ -118,6 +118,21 @@ export default function RulesPage() {
                     <li>• Тернарный оператор</li>
                     <li>• Импорты (указаны в задаче)</li>
                   </ul>
+                </div>
+              </div>
+
+              <div className="mt-6 grid md:grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-background-tertiary">
+                  <div className="text-sm font-semibold mb-1">Ограничение времени</div>
+                  <div className="text-sm text-text-secondary">
+                    Общий лимит на сабмит: около 10 секунд. Если превышен — результат FAIL (Time limit exceeded).
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-background-tertiary">
+                  <div className="text-sm font-semibold mb-1">Ограничение вывода</div>
+                  <div className="text-sm text-text-secondary">
+                    Суммарный stdout/stderr до 50 KB. Если больше — FAIL (Output limit exceeded).
+                  </div>
                 </div>
               </div>
             </Card>

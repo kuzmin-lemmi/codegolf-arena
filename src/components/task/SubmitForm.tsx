@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CodeEditor } from './CodeEditor';
@@ -61,6 +61,7 @@ export function SubmitForm({
   allowedImports = [],
   onSubmitSuccess,
 }: SubmitFormProps) {
+  const draftKey = useMemo(() => `task_draft:${taskSlug}`, [taskSlug]);
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -74,6 +75,24 @@ export function SubmitForm({
   const validation = validateOneliner(code);
   const length = calculateCodeLength(code);
   const canSubmit = validation.valid && code.trim().length > 0;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem(draftKey);
+    if (saved) {
+      setCode(saved);
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const trimmed = code.trim();
+    if (!trimmed) {
+      window.localStorage.removeItem(draftKey);
+      return;
+    }
+    window.localStorage.setItem(draftKey, code);
+  }, [code, draftKey]);
 
   // Отправка решения (для авторизованных)
   const handleSubmit = async () => {
@@ -195,6 +214,9 @@ export function SubmitForm({
     setCode('');
     setResult(null);
     setLocalResult(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(draftKey);
+    }
   };
 
   return (

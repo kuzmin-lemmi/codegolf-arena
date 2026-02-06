@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, Trophy, Users } from 'lucide-react';
 import { Button, Card, TierBadge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { TaskTier } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface TaskListItem {
   id: string;
@@ -15,6 +16,7 @@ interface TaskListItem {
   mode: 'practice' | 'tournament';
   functionSignature: string;
   statementMd: string;
+  createdAt: Date | string;
   participantsCount: number;
   bestLength: number | null;
 }
@@ -30,15 +32,47 @@ interface TasksPageClientProps {
 }
 
 type TierFilter = 'all' | TaskTier;
+type ProgressFilter = 'all' | 'unsolved' | 'solved';
+type SortMode = 'popular' | 'new' | 'records';
 
 export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
+  const { isLoggedIn } = useAuth();
   const [search, setSearch] = useState('');
   const [tier, setTier] = useState<TierFilter>('all');
+  const [progress, setProgress] = useState<ProgressFilter>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('popular');
+  const [solvedSlugs, setSolvedSlugs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setSolvedSlugs(new Set());
+      return;
+    }
+
+    const fetchSolved = async () => {
+      try {
+        const res = await fetch('/api/profile');
+        const json = await res.json();
+        if (!json.success) return;
+        const slugs = (json.data?.solvedTasks || []).map((t: any) => t.slug);
+        setSolvedSlugs(new Set(slugs));
+      } catch {
+        // ignore
+      }
+    };
+
+    fetchSolved();
+  }, [isLoggedIn]);
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return tasks.filter((task) => {
+    const list = tasks.filter((task) => {
       if (tier !== 'all' && task.tier !== tier) return false;
+
+      const solved = solvedSlugs.has(task.slug);
+      if (progress === 'solved' && !solved) return false;
+      if (progress === 'unsolved' && solved) return false;
+
       if (!query) return true;
       return (
         task.title.toLowerCase().includes(query) ||
@@ -46,7 +80,22 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
         task.statementMd.toLowerCase().includes(query)
       );
     });
-  }, [tasks, search, tier]);
+
+    list.sort((a, b) => {
+      if (sortMode === 'new') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortMode === 'records') {
+        if (a.bestLength === null && b.bestLength === null) return 0;
+        if (a.bestLength === null) return 1;
+        if (b.bestLength === null) return -1;
+        return a.bestLength - b.bestLength;
+      }
+      return b.participantsCount - a.participantsCount;
+    });
+
+    return list;
+  }, [tasks, search, tier, progress, sortMode, solvedSlugs]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -85,16 +134,50 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
             />
           </div>
         </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <FilterButton
+            active={progress === 'all'}
+            onClick={() => setProgress('all')}
+            label="Все статусы"
+          />
+          <FilterButton
+            active={progress === 'unsolved'}
+            onClick={() => setProgress('unsolved')}
+            label="Ещё не решал"
+          />
+          <FilterButton
+            active={progress === 'solved'}
+            onClick={() => setProgress('solved')}
+            label="Уже решал"
+          />
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-text-muted">Сортировка:</span>
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              className="input h-9 py-1 text-sm max-w-[220px]"
+            >
+              <option value="popular">Самые популярные</option>
+              <option value="new">Новые</option>
+              <option value="records">С рекордами</option>
+            </select>
+          </div>
+        </div>
       </Card>
 
       {filteredTasks.length === 0 ? (
         <Card padding="lg" className="text-center">
-          <div className="text-text-secondary">Ничего не найдено</div>
+          <div className="text-text-secondary mb-3">Ничего не найдено</div>
+          <Link href="/tasks">
+            <Button variant="secondary" size="sm">Сбросить фильтры</Button>
+          </Link>
         </Card>
       ) : (
         <div className="grid gap-4">
           {filteredTasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard key={task.id} task={task} solved={solvedSlugs.has(task.slug)} />
           ))}
         </div>
       )}
@@ -123,8 +206,9 @@ function FilterButton({
   );
 }
 
-function TaskCard({ task }: { task: TaskListItem }) {
+function TaskCard({ task, solved }: { task: TaskListItem; solved: boolean }) {
   const isTournament = task.mode === 'tournament';
+  const solvePoints = task.tier === 'bronze' ? 10 : task.tier === 'silver' ? 20 : 30;
 
   return (
     <Card hover padding="md" className="group">
@@ -150,6 +234,19 @@ function TaskCard({ task }: { task: TaskListItem }) {
           </div>
           <div className="text-xs font-mono text-text-muted">
             {task.functionSignature}
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="badge bg-background-tertiary text-text-secondary border border-border/60">
+              Первое решение: +{solvePoints}
+            </span>
+            <span className="badge bg-background-tertiary text-text-secondary border border-border/60">
+              Топ-1: +25
+            </span>
+            {solved && (
+              <span className="badge bg-accent-green/15 text-accent-green border border-accent-green/30">
+                Уже решена
+              </span>
+            )}
           </div>
         </div>
 

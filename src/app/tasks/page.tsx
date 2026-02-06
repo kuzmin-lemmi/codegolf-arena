@@ -24,6 +24,7 @@ async function getTasks() {
         mode: true,
         functionSignature: true,
         statementMd: true,
+        createdAt: true,
         _count: {
           select: { bestSubmissions: true },
         },
@@ -50,6 +51,7 @@ async function getTasks() {
           mode: task.mode as TaskMode,
           functionSignature: task.functionSignature,
           statementMd: task.statementMd,
+          createdAt: task.createdAt,
           participantsCount: task._count.bestSubmissions,
           bestLength: bestSubmission?.codeLength || null,
         };

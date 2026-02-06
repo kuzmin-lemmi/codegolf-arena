@@ -17,16 +17,30 @@ interface TaskPageProps {
 export async function generateMetadata({ params }: TaskPageProps): Promise<Metadata> {
   const task = await prisma.task.findUnique({
     where: { slug: params.slug },
-    select: { title: true, status: true },
+    select: { title: true, status: true, statementMd: true },
   });
 
   if (!task || task.status !== 'published') {
     return { title: 'Задача не найдена' };
   }
 
+  const description = `Реши задачу "${task.title}" в одну строку на Python. ${task.statementMd.slice(0, 120)}`;
+
   return {
     title: `${task.title} — Арена однострочников`,
-    description: `Реши задачу "${task.title}" в одну строку на Python. Code golf соревнование.`,
+    description,
+    openGraph: {
+      title: `${task.title} — Арена однострочников`,
+      description,
+      type: 'article',
+      url: `https://codegolf.ru/task/${params.slug}`,
+      siteName: 'Арена однострочников',
+    },
+    twitter: {
+      card: 'summary',
+      title: `${task.title} — Арена однострочников`,
+      description,
+    },
   };
 }
 

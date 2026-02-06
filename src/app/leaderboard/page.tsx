@@ -2,6 +2,8 @@
 
 import { Trophy, Medal, TrendingUp } from 'lucide-react';
 import { Card, Avatar } from '@/components/ui';
+import Link from 'next/link';
+import { Button } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { cn } from '@/lib/utils';
 
@@ -65,9 +67,17 @@ export default async function LeaderboardPage() {
           <Card padding="lg" className="text-center">
             <Trophy className="w-16 h-16 mx-auto text-text-muted mb-4" />
             <h2 className="text-xl font-semibold mb-2">Рейтинг пока пуст</h2>
-            <p className="text-text-secondary">
-              Станьте первым участником — решите любую задачу!
+            <p className="text-text-secondary mb-4">
+              Станьте первым участником — решите любую задачу и получите очки.
             </p>
+            <div className="flex items-center justify-center gap-3">
+              <Link href="/tasks">
+                <Button variant="primary" size="sm">Решить первую задачу</Button>
+              </Link>
+              <Link href="/rules">
+                <Button variant="secondary" size="sm">Как работает рейтинг</Button>
+              </Link>
+            </div>
           </Card>
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">

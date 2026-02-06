@@ -11,6 +11,9 @@ interface TaskStatementProps {
 export function TaskStatement({ task }: TaskStatementProps) {
   const constraints = task.constraintsJson;
   const allowedImports = constraints.allowed_imports || [];
+  const forbiddenTokens = constraints.forbidden_tokens || [];
+  const hasSemicolonBan = forbiddenTokens.includes(';');
+  const hasEvalBan = forbiddenTokens.some((t) => ['eval', 'exec', '__import__'].includes(t));
 
   return (
     <div className="space-y-6">
@@ -74,15 +77,22 @@ export function TaskStatement({ task }: TaskStatementProps) {
           <ConstraintPill icon="✓" color="green">
             1 строка
           </ConstraintPill>
+          {hasSemicolonBan && (
+            <ConstraintPill icon="✗" color="red">
+              ; запрещен
+            </ConstraintPill>
+          )}
           <ConstraintPill icon="✗" color="red">
-            :: запрещены
+            переносы и tab запрещены
           </ConstraintPill>
-          <ConstraintPill icon="✗" color="red">
-            tab запрещён
-          </ConstraintPill>
+          {hasEvalBan && (
+            <ConstraintPill icon="✗" color="red">
+              eval / exec / __import__ запрещены
+            </ConstraintPill>
+          )}
           {allowedImports.length > 0 ? (
             <ConstraintPill icon="i" color="blue">
-              import: {allowedImports.join(', ')}
+              Разрешён импорт: {allowedImports.join(', ')}
             </ConstraintPill>
           ) : (
             <ConstraintPill icon="✗" color="red">

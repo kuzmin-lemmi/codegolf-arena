@@ -31,14 +31,6 @@ export default function AdminTasksPage() {
     }
   }, [isLoading, isLoggedIn, user, router]);
 
-  if (isLoading || !user?.isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (!user?.isAdmin) return;
 
@@ -82,6 +74,14 @@ export default function AdminTasksPage() {
 
     fetchTasks();
   }, [user?.isAdmin]);
+
+  if (isLoading || !user?.isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch =

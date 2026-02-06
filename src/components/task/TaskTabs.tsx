@@ -3,9 +3,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LeaderboardTable, LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
 import { Lock, Code2, Trophy, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui';
 
 interface TaskTabsProps {
   leaderboard: LeaderboardEntry[];
@@ -131,6 +133,23 @@ function LeaderboardContent({
   entries: LeaderboardEntry[];
   currentUserRank?: number;
 }) {
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <Trophy className="w-8 h-8 text-text-muted" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Рейтинг пока пуст</h3>
+        <p className="text-text-secondary max-w-sm mb-4">
+          Будь первым в таблице этой задачи и задай ориентир для остальных.
+        </p>
+        <Link href="https://t.me/codegolf_arena" target="_blank" rel="noopener noreferrer">
+          <Button variant="ghost" size="sm">Обсудить в чате</Button>
+        </Link>
+      </div>
+    );
+  }
+
   // Отмечаем текущего пользователя
   const entriesWithCurrentUser = entries.map((entry) => ({
     ...entry,
@@ -190,7 +209,7 @@ function SolutionsContent({
         </div>
         <h3 className="text-lg font-semibold mb-2">Нет решений</h3>
         <p className="text-text-secondary">
-          Пока нет решений для отображения
+          Пока никто не открыл решения. Реши задачу, и здесь появятся лучшие подходы.
         </p>
       </div>
     );

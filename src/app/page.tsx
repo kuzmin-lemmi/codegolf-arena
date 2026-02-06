@@ -1,7 +1,7 @@
 // src/app/page.tsx
 
 import Link from 'next/link';
-import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users, MessageCircle } from 'lucide-react';
+import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users, MessageCircle, BookOpen } from 'lucide-react';
 import { Card, TierBadge, Button, Avatar } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatTimeRemaining } from '@/lib/utils';
@@ -159,6 +159,32 @@ export default async function HomePage() {
                 </Button>
               </a>
             </div>
+            <p className="mt-4 text-sm text-text-secondary">
+              Локальная проверка для скорости, полный набор тестов проверяется при отправке в рейтинг.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-border bg-background-secondary/30">
+        <div className="container mx-auto px-4 py-8">
+          <h2 className="text-xl font-semibold mb-4 text-center">Как это работает за 30 секунд</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card padding="md">
+              <div className="text-xs text-text-muted mb-1">Шаг 1</div>
+              <div className="font-semibold mb-2">Выбери задачу</div>
+              <p className="text-sm text-text-secondary">Открой Bronze, Silver или Gold и посмотри формат функции.</p>
+            </Card>
+            <Card padding="md">
+              <div className="text-xs text-text-muted mb-1">Шаг 2</div>
+              <div className="font-semibold mb-2">Напиши однострочник</div>
+              <p className="text-sm text-text-secondary">Проверь на открытых тестах и отправь решение в рейтинг.</p>
+            </Card>
+            <Card padding="md">
+              <div className="text-xs text-text-muted mb-1">Шаг 3</div>
+              <div className="font-semibold mb-2">Поднимайся в топ</div>
+              <p className="text-sm text-text-secondary">Чем короче код и лучше место — тем больше очков прогресса.</p>
+            </Card>
           </div>
         </div>
       </section>
@@ -198,9 +224,12 @@ export default async function HomePage() {
               {globalLeaderboard.length > 0 ? (
                 <GlobalLeaderboardCompact entries={globalLeaderboard} />
               ) : (
-                <p className="text-text-secondary text-center py-4">
-                  Станьте первым участником!
-                </p>
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-text-secondary">Станьте первым участником!</p>
+                  <Link href="/tasks">
+                    <Button variant="secondary" size="sm">Решить первую задачу</Button>
+                  </Link>
+                </div>
               )}
             </Card>
 
@@ -236,9 +265,20 @@ export default async function HomePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-text-secondary text-center py-4">
-                  Пока нет решений
-                </p>
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-text-secondary">Пока нет решений</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Link href="/tasks">
+                      <Button variant="secondary" size="sm">Начать с Bronze</Button>
+                    </Link>
+                    <Link href="/rules">
+                      <Button variant="ghost" size="sm">
+                        <BookOpen className="w-4 h-4" />
+                        Правила
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               )}
             </Card>
           </div>

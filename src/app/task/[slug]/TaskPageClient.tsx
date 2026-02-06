@@ -39,10 +39,30 @@ export function TaskPageClient({
   const formatArgs = (args: any[]) =>
     args.length > 0 ? args.map(toPythonLiteral).join(', ') : '';
 
+  const bestLength = leaderboard.length > 0 ? leaderboard[0].codeLength : null;
+  const top3Target = leaderboard.length >= 3 ? leaderboard[2].codeLength : bestLength;
+
   return (
     <div className="space-y-6">
       <Card padding="lg">
         <h2 className="text-lg font-semibold mb-4">Твоё решение</h2>
+        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-2 text-sm text-text-secondary">
+          {bestLength !== null ? (
+            <>
+              Текущий лучший результат: <span className="font-mono text-accent-green font-semibold">{bestLength}</span>
+              {top3Target !== null && (
+                <span>
+                  {' '}• цель для топ-3:{' '}
+                  <span className="font-mono text-accent-blue font-semibold">{top3Target}</span>
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              Пока нет решений в рейтинге — стань первым и задай планку для остальных.
+            </>
+          )}
+        </div>
         <SubmitForm
           taskSlug={taskSlug}
           isLoggedIn={isLoggedIn}
@@ -87,6 +107,10 @@ export function TaskPageClient({
           </div>
           <div className="mt-3 text-xs text-text-muted">
             Полный набор тестов проверяется при отправке в рейтинг.
+          </div>
+          <div className="mt-3 rounded-md border border-border px-3 py-2 text-xs text-text-secondary bg-background-tertiary/40">
+            Почему тесты разделены: локально запускаются открытые кейсы для быстрого цикла, на сервере — полный набор скрытых.
+            Частые причины расхождений: граничные случаи, большие значения, округление float и лимиты времени/вывода.
           </div>
         </Card>
       )}
