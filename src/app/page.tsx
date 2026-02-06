@@ -87,6 +87,23 @@ async function getHomePageData() {
       diff: -Math.floor(Math.random() * 10) - 1,
     }));
 
+    const recommendedTask = await prisma.task.findFirst({
+      where: {
+        status: 'published',
+        tier: 'bronze',
+      },
+      orderBy: [{ bestSubmissions: { _count: 'asc' } }, { createdAt: 'asc' }],
+      select: {
+        slug: true,
+        title: true,
+        functionSignature: true,
+        statementMd: true,
+        _count: {
+          select: { bestSubmissions: true },
+        },
+      },
+    });
+
     return {
       weeklyChallenge: weeklyChallenge
         ? {
@@ -107,6 +124,15 @@ async function getHomePageData() {
         tasksSolved: u._count.bestSubmissions,
       })),
       recentRecords,
+      recommendedTask: recommendedTask
+        ? {
+            slug: recommendedTask.slug,
+            title: recommendedTask.title,
+            functionSignature: recommendedTask.functionSignature,
+            preview: recommendedTask.statementMd.split('\n')[0],
+            participants: recommendedTask._count.bestSubmissions,
+          }
+        : null,
     };
   } catch (error) {
     console.error('Error fetching home page data:', error);
@@ -114,12 +140,13 @@ async function getHomePageData() {
       weeklyChallenge: null,
       globalLeaderboard: [],
       recentRecords: [],
+      recommendedTask: null,
     };
   }
 }
 
 export default async function HomePage() {
-  const { weeklyChallenge, globalLeaderboard, recentRecords } = await getHomePageData();
+  const { weeklyChallenge, globalLeaderboard, recentRecords, recommendedTask } = await getHomePageData();
 
   return (
     <div className="min-h-screen">
@@ -166,28 +193,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="border-b border-border bg-background-secondary/30">
-        <div className="container mx-auto px-4 py-8">
-          <h2 className="text-xl font-semibold mb-4 text-center">Как это работает за 30 секунд</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card padding="md">
-              <div className="text-xs text-text-muted mb-1">Шаг 1</div>
-              <div className="font-semibold mb-2">Выбери задачу</div>
-              <p className="text-sm text-text-secondary">Открой Bronze, Silver или Gold и посмотри формат функции.</p>
-            </Card>
-            <Card padding="md">
-              <div className="text-xs text-text-muted mb-1">Шаг 2</div>
-              <div className="font-semibold mb-2">Напиши однострочник</div>
-              <p className="text-sm text-text-secondary">Проверь на открытых тестах и отправь решение в рейтинг.</p>
-            </Card>
-            <Card padding="md">
-              <div className="text-xs text-text-muted mb-1">Шаг 3</div>
-              <div className="font-semibold mb-2">Поднимайся в топ</div>
-              <p className="text-sm text-text-secondary">Чем короче код и лучше место — тем больше очков прогресса.</p>
+      {recommendedTask && (
+        <section className="border-b border-border bg-background-secondary/20">
+          <div className="container mx-auto px-4 py-8">
+            <Card padding="lg" className="border-accent-blue/25 bg-accent-blue/5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-accent-blue mb-1">Рекомендуемая первая задача</div>
+                  <h2 className="text-xl font-semibold mb-1">{recommendedTask.title}</h2>
+                  <p className="text-sm text-text-secondary mb-2">{recommendedTask.preview}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                    <span className="badge bg-background-tertiary border border-border/60">{recommendedTask.functionSignature}</span>
+                    <span>Участников: {recommendedTask.participants}</span>
+                    <span>• Подходит для первого сабмита</span>
+                  </div>
+                </div>
+                <Link href={`/task/${recommendedTask.slug}`}>
+                  <Button variant="primary" size="lg">
+                    Решить эту задачу
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </Link>
+              </div>
             </Card>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Main Content */}
       <section className="container mx-auto px-4 py-12">

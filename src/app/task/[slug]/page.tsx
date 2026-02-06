@@ -110,6 +110,27 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
   const currentUserRank = undefined;
 
+  let nextTask = await prisma.task.findFirst({
+    where: {
+      status: 'published',
+      NOT: { id: task.id },
+      createdAt: { gt: task.createdAt },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { slug: true, title: true },
+  });
+
+  if (!nextTask) {
+    nextTask = await prisma.task.findFirst({
+      where: {
+        status: 'published',
+        NOT: { id: task.id },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { slug: true, title: true },
+    });
+  }
+
   return (
     <div className="min-h-screen pb-12">
       {/* Back link */}
@@ -138,6 +159,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <div className="space-y-6">
               <TaskPageClient
                 taskSlug={params.slug}
+                taskTitle={taskData.title}
+                nextTask={nextTask}
                 functionArgs={taskData.functionArgs}
                 testcases={openTestcases}
                 allowedImports={taskData.constraintsJson.allowed_imports || []}

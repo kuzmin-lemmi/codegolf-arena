@@ -14,13 +14,20 @@ import { SubmissionStatus } from '@/types';
 
 interface SubmitFormProps {
   taskSlug: string;
+  taskTitle?: string;
   isLoggedIn?: boolean;
+  nextTask?: { slug: string; title: string } | null;
   functionArgs?: string[];
   testcases?: Array<{
     inputData: { args: any[] };
     expectedOutput: string;
   }>;
   allowedImports?: string[];
+  rankingTargets?: {
+    top1: number | null;
+    top3: number | null;
+  };
+  onCodeMetricsChange?: (metrics: { length: number; hasCode: boolean }) => void;
   onSubmitSuccess?: (result: SubmitResult) => void;
 }
 
@@ -55,10 +62,14 @@ interface LocalCheckResult {
 
 export function SubmitForm({ 
   taskSlug, 
+  taskTitle,
   isLoggedIn = false,
+  nextTask,
   functionArgs = ['s'],
   testcases = [],
   allowedImports = [],
+  rankingTargets,
+  onCodeMetricsChange,
   onSubmitSuccess,
 }: SubmitFormProps) {
   const draftKey = useMemo(() => `task_draft:${taskSlug}`, [taskSlug]);
@@ -75,6 +86,14 @@ export function SubmitForm({
   const validation = validateOneliner(code);
   const length = calculateCodeLength(code);
   const canSubmit = validation.valid && code.trim().length > 0;
+
+  useEffect(() => {
+    if (!onCodeMetricsChange) return;
+    onCodeMetricsChange({
+      length,
+      hasCode: code.trim().length > 0,
+    });
+  }, [code, length, onCodeMetricsChange]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -317,16 +336,133 @@ export function SubmitForm({
       )}
 
       {/* Server result */}
-      {result && <SubmitResultCard result={result} />}
+      {result && (
+        <>
+          <SubmitResultCard result={result} />
+          {result.status === 'pass' ? (
+            <NextStepCard
+              length={result.length}
+              rankingTargets={rankingTargets}
+              taskTitle={taskTitle}
+              nextTask={nextTask}
+            />
+          ) : (
+            <FailureHints
+              details={result.details || []}
+              errorMessage={result.errorMessage || undefined}
+            />
+          )}
+        </>
+      )}
 
       {/* Local check result */}
       {localResult && !result && (
-        <LocalCheckResultCard 
-          result={localResult} 
-          isLoggedIn={isLoggedIn}
-          returnTo={returnTo}
-        />
+        <>
+          <LocalCheckResultCard 
+            result={localResult} 
+            isLoggedIn={isLoggedIn}
+            returnTo={returnTo}
+          />
+          {localResult.status === 'fail' && (
+            <FailureHints details={localResult.details} />
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function NextStepCard({
+  length,
+  rankingTargets,
+  taskTitle,
+  nextTask,
+}: {
+  length: number;
+  rankingTargets?: { top1: number | null; top3: number | null };
+  taskTitle?: string;
+  nextTask?: { slug: string; title: string } | null;
+}) {
+  const toTop1 = rankingTargets?.top1 !== null && rankingTargets?.top1 !== undefined
+    ? length - rankingTargets.top1
+    : null;
+  const toTop3 = rankingTargets?.top3 !== null && rankingTargets?.top3 !== undefined
+    ? length - rankingTargets.top3
+    : null;
+
+  return (
+    <div className="p-4 rounded-lg border border-accent-blue/30 bg-accent-blue/5 animate-fade-in">
+      <div className="font-semibold text-accent-blue mb-2">Следующий шаг</div>
+      <div className="space-y-1 text-sm text-text-secondary">
+        {toTop1 !== null && toTop1 > 0 && (
+          <div>До топ-1 по этой задаче: <span className="font-mono text-text-primary">-{toTop1}</span> символов.</div>
+        )}
+        {toTop3 !== null && toTop3 > 0 && (
+          <div>До топ-3: <span className="font-mono text-text-primary">-{toTop3}</span> символов.</div>
+        )}
+        {(toTop1 === null || toTop1 <= 0) && (toTop3 === null || toTop3 <= 0) && (
+          <div>Отличный результат! Попробуй ещё укоротить решение или перейти к следующей задаче.</div>
+        )}
+        {taskTitle && (
+          <div className="text-xs text-text-muted">Задача: {taskTitle}</div>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {nextTask ? (
+          <Link href={`/task/${nextTask.slug}`}>
+            <Button variant="primary" size="sm">Дальше: {nextTask.title}</Button>
+          </Link>
+        ) : (
+          <Link href="/tasks">
+            <Button variant="secondary" size="sm">К списку задач</Button>
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FailureHints({ details, errorMessage }: { details: TestResultDetail[]; errorMessage?: string }) {
+  const combinedText = [
+    errorMessage || '',
+    ...details.map((d) => d.error || ''),
+  ].join(' ').toLowerCase();
+
+  const hints: string[] = [];
+
+  if (combinedText.includes('time limit') || combinedText.includes('timeout')) {
+    hints.push('Упрости алгоритм: избегай лишних циклов и повторных вычислений в выражении.');
+  }
+  if (combinedText.includes('output limit')) {
+    hints.push('Убери отладочный вывод: лишний print быстро переполняет лимит вывода.');
+  }
+  if (combinedText.includes('syntaxerror') || combinedText.includes('indentationerror')) {
+    hints.push('Проверь синтаксис однострочника: лишние скобки, двоеточия и запятые.');
+  }
+  if (combinedText.includes('nameerror') || combinedText.includes('not defined')) {
+    hints.push('Похоже на отсутствующее имя/импорт. Проверь разрешенные импорты и названия переменных.');
+  }
+  if (combinedText.includes('typeerror') || combinedText.includes('valueerror')) {
+    hints.push('Проверь типы и граничные случаи: пустые массивы, нули, отрицательные значения.');
+  }
+  if (combinedText.includes('assert') || details.some((d) => !d.passed && d.expected && d.actual)) {
+    hints.push('Есть расхождение ожидаемого и фактического значения — проверь порядок операций и округление.');
+  }
+
+  if (hints.length === 0) {
+    hints.push('Сначала прогони локальные открытые тесты и отдельно проверь граничные случаи.');
+    hints.push('Частые проблемы: пустой ввод, большие числа, float-округление, запретные токены.');
+  }
+
+  return (
+    <div className="p-4 rounded-lg border border-accent-yellow/30 bg-accent-yellow/5 animate-fade-in">
+      <div className="font-semibold text-accent-yellow mb-2">Подсказки по частым фейлам</div>
+      <div className="space-y-1 text-sm text-text-secondary">
+        {hints.slice(0, 3).map((hint) => (
+          <div key={hint}>• {hint}</div>
+        ))}
+      </div>
     </div>
   );
 }

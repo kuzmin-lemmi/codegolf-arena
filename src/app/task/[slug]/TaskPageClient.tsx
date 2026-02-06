@@ -14,6 +14,8 @@ import type { SubmissionStatus } from '@/types';
 
 interface TaskPageClientProps {
   taskSlug: string;
+  taskTitle: string;
+  nextTask: { slug: string; title: string } | null;
   functionArgs: string[];
   testcases: Array<{
     inputData: { args: any[] };
@@ -26,6 +28,8 @@ interface TaskPageClientProps {
 
 export function TaskPageClient({
   taskSlug,
+  taskTitle,
+  nextTask,
   functionArgs,
   testcases,
   allowedImports,
@@ -35,12 +39,15 @@ export function TaskPageClient({
   const { isLoggedIn } = useAuth();
   const router = useRouter();
   const [solutionsRefreshKey, setSolutionsRefreshKey] = useState(0);
+  const [editorLength, setEditorLength] = useState<number | null>(null);
 
   const formatArgs = (args: any[]) =>
     args.length > 0 ? args.map(toPythonLiteral).join(', ') : '';
 
   const bestLength = leaderboard.length > 0 ? leaderboard[0].codeLength : null;
   const top3Target = leaderboard.length >= 3 ? leaderboard[2].codeLength : bestLength;
+  const toTop1 = editorLength !== null && bestLength !== null ? editorLength - bestLength : null;
+  const toTop3 = editorLength !== null && top3Target !== null ? editorLength - top3Target : null;
 
   return (
     <div className="space-y-6">
@@ -62,6 +69,30 @@ export function TaskPageClient({
               Пока нет решений в рейтинге — стань первым и задай планку для остальных.
             </>
           )}
+          {editorLength !== null && (
+            <div className="mt-2 text-xs">
+              {toTop1 !== null && (
+                <span>
+                  {toTop1 > 0 ? (
+                    <>До топ-1: <span className="font-mono text-accent-blue font-semibold">-{toTop1}</span> символов</>
+                  ) : toTop1 === 0 ? (
+                    <>Ты уже на уровне текущего топ-1.</>
+                  ) : (
+                    <>Ты уже короче текущего топ-1 на <span className="font-mono text-accent-green font-semibold">{Math.abs(toTop1)}</span> символов.</>
+                  )}
+                </span>
+              )}
+              {toTop3 !== null && (
+                <span className="ml-3">
+                  {toTop3 > 0 ? (
+                    <>До топ-3: <span className="font-mono text-accent-blue font-semibold">-{toTop3}</span></>
+                  ) : (
+                    <>Текущая длина уже тянет на топ-3.</>
+                  )}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <SubmitForm
           taskSlug={taskSlug}
@@ -69,6 +100,12 @@ export function TaskPageClient({
           functionArgs={functionArgs}
           testcases={testcases}
           allowedImports={allowedImports}
+          taskTitle={taskTitle}
+          rankingTargets={{ top1: bestLength, top3: top3Target }}
+          nextTask={nextTask}
+          onCodeMetricsChange={({ length, hasCode }) => {
+            setEditorLength(hasCode ? length : null);
+          }}
           onSubmitSuccess={(result: { status: SubmissionStatus }) => {
             if (result.status === 'pass') {
               setSolutionsRefreshKey((prev) => prev + 1);
