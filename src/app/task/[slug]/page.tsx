@@ -153,14 +153,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
       <div className="container mx-auto px-4 py-6 md:py-8">
         <div className="grid lg:grid-cols-2 gap-6 md:gap-8 items-start">
           {/* Left Column - Task Statement (sticky) */}
-          <div className="lg:sticky lg:top-20">
+          <div className="order-2 lg:order-1 lg:sticky lg:top-20">
             <Card padding="lg">
               <TaskStatement task={taskData} />
             </Card>
           </div>
 
           {/* Right Column - Editor + Results (Client Component) */}
-            <div className="space-y-6">
+            <div className="order-1 lg:order-2 space-y-6">
               <TaskPageClient
                 taskSlug={slug}
                 taskTitle={taskData.title}

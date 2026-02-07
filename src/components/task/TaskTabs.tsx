@@ -84,13 +84,13 @@ export function TaskTabs({
   return (
     <div className="space-y-4">
       {/* Tab buttons */}
-      <div className="flex border-b border-border">
+      <div className="flex gap-1 overflow-x-auto border-b border-border pb-1 -mx-1 px-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => !tab.locked && setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+              'shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === tab.id
                 ? 'text-accent-blue border-accent-blue'
                 : 'text-text-secondary border-transparent hover:text-text-primary hover:border-border',

@@ -16,6 +16,8 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma db push --force-reset && npm run db:seed",
+    "db:topics:backfill": "npx tsx scripts/backfill-task-topics.ts",
+    "db:tasks:import": "npx tsx scripts/import-codegolf-tasks.ts",
     "ops:preflight:postgres": "npx tsx scripts/preflight-postgres.ts",
     "ops:smoke": "npx tsx scripts/smoke-check.ts"
   },

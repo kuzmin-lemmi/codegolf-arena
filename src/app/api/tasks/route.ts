@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { normalizeTaskTopics } from '@/lib/task-topics';
 
 export async function GET(request: NextRequest) {
   try {
@@ -86,12 +87,19 @@ export async function GET(request: NextRequest) {
       ])
     );
 
-    const tasksWithBest = tasks.map((task) => ({
-      ...task,
-      constraintsJson: JSON.parse(task.constraintsJson),
-      participantsCount: task._count.bestSubmissions,
-      bestSolution: bestByTask.get(task.id) || null,
-    }));
+    const tasksWithBest = tasks.map((task) => {
+      const parsedConstraints = JSON.parse(task.constraintsJson);
+
+      return {
+        ...task,
+        constraintsJson: parsedConstraints,
+        topics: Array.isArray(parsedConstraints?.topics)
+          ? normalizeTaskTopics(parsedConstraints.topics, 8)
+          : [],
+        participantsCount: task._count.bestSubmissions,
+        bestSolution: bestByTask.get(task.id) || null,
+      };
+    });
 
     return NextResponse.json({
       success: true,

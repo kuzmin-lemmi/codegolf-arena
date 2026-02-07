@@ -111,7 +111,7 @@ export function CodeEditor({
         )}
         style={{
           fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
-          fontSize: '14px',
+          fontSize: '16px',
           fontWeight: 400,
         }}
       />
@@ -162,7 +162,7 @@ export function CodeEditor({
           )}
           style={{
             fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
-            fontSize: '14px',
+            fontSize: '16px',
             fontWeight: 400,
             lineHeight: '1.6',
             tabSize: 4,

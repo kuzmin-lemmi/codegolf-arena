@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from './auth';
+import { normalizeTaskTopics } from './task-topics';
 
 // Проверка прав администратора
 export async function requireAdmin(request: NextRequest) {
@@ -48,6 +49,7 @@ export interface TaskFormData {
     forbidden_tokens: string[];
     allowed_imports: string[];
     timeout_ms: number;
+    topics: string[];
   };
   testcases: Array<{
     inputData: { args: any[] };
@@ -131,6 +133,9 @@ export function validateTaskData(data: any): { valid: boolean; error?: string; d
         forbidden_tokens: data.constraints?.forbidden_tokens || [';', 'eval', 'exec', '__import__'],
         allowed_imports: data.constraints?.allowed_imports || [],
         timeout_ms: data.constraints?.timeout_ms || 2000,
+        topics: Array.isArray(data.constraints?.topics)
+          ? normalizeTaskTopics(data.constraints.topics, 8)
+          : [],
       },
       testcases: data.testcases.map((tc: any, idx: number) => ({
         inputData: tc.inputData,

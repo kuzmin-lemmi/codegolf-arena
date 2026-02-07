@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge } from '@/components/ui';
 import { cn, validateOneliner } from '@/lib/utils';
+import { TASK_TOPIC_IDS, topicLabel } from '@/lib/task-topics';
 
 interface TestCase {
   id: string;
@@ -29,6 +30,7 @@ interface TaskFormData {
   exampleOutput: string;
   forbiddenTokens: string;
   allowedImports: string;
+  topics: string;
   timeoutMs: number;
   testcases: TestCase[];
 }
@@ -50,6 +52,7 @@ const defaultData: TaskFormData = {
   exampleOutput: '',
   forbiddenTokens: ';, eval, exec, __import__',
   allowedImports: '',
+  topics: '',
   timeoutMs: 2000,
   testcases: [
     { id: '1', args: '', expectedOutput: '', isHidden: false },
@@ -71,6 +74,13 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const toggleTopic = (topic: string) => {
+    const current = splitCsv(data.topics).map((value) => value.toLowerCase());
+    const exists = current.includes(topic);
+    const next = exists ? current.filter((value) => value !== topic) : [...current, topic];
+    updateField('topics', next.join(', '));
   };
 
   // Авто-генерация slug из title
@@ -158,6 +168,7 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
       constraints: {
         forbidden_tokens: splitCsv(data.forbiddenTokens),
         allowed_imports: splitCsv(data.allowedImports),
+        topics: splitCsv(data.topics).map((topic) => topic.toLowerCase()),
         timeout_ms: data.timeoutMs,
       },
       testcases,
@@ -413,6 +424,34 @@ export function TaskForm({ initialData, onSubmit }: TaskFormProps) {
             onChange={(e) => updateField('allowedImports', e.target.value)}
             placeholder="math, itertools"
           />
+        </div>
+        <div className="mt-4">
+          <Input
+            label="Темы/теги (через запятую)"
+            value={data.topics}
+            onChange={(e) => updateField('topics', e.target.value)}
+            placeholder="строки, числа, сортировка, рекурсия"
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {TASK_TOPIC_IDS.map((topic) => {
+              const active = splitCsv(data.topics).map((v) => v.toLowerCase()).includes(topic);
+              return (
+                <button
+                  key={topic}
+                  type="button"
+                  onClick={() => toggleTopic(topic)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs border transition-colors',
+                    active
+                      ? 'border-accent-blue bg-accent-blue/10 text-accent-blue'
+                      : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+                  )}
+                >
+                  {topicLabel(topic)}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="mt-4 max-w-xs">
           <Input

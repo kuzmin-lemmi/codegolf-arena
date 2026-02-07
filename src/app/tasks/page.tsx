@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { TasksPageClient } from './TasksPageClient';
 import type { TaskMode, TaskTier } from '@/types';
+import { normalizeTaskTopics } from '@/lib/task-topics';
 
 export const metadata = {
   title: 'Задачи — Арена однострочников',
@@ -24,6 +25,7 @@ async function getTasks() {
         mode: true,
         functionSignature: true,
         statementMd: true,
+        constraintsJson: true,
         createdAt: true,
         _count: {
           select: { bestSubmissions: true },
@@ -51,6 +53,7 @@ async function getTasks() {
           mode: task.mode as TaskMode,
           functionSignature: task.functionSignature,
           statementMd: task.statementMd,
+          topics: getTaskTopics(task.constraintsJson),
           createdAt: task.createdAt,
           participantsCount: task._count.bestSubmissions,
           bestLength: bestSubmission?.codeLength || null,
@@ -61,6 +64,16 @@ async function getTasks() {
     return tasksWithBest;
   } catch (error) {
     console.error('Error fetching tasks:', error);
+    return [];
+  }
+}
+
+function getTaskTopics(constraintsJson: string): string[] {
+  try {
+    const parsed = JSON.parse(constraintsJson) as { topics?: unknown };
+    if (!Array.isArray(parsed.topics)) return [];
+    return normalizeTaskTopics(parsed.topics, 8);
+  } catch {
     return [];
   }
 }

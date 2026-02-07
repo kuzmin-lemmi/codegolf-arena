@@ -2,6 +2,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { inferTaskTopics } from '../src/lib/task-topics';
 
 const prisma = new PrismaClient();
 
@@ -166,6 +167,12 @@ async function main() {
         constraintsJson: JSON.stringify({
           forbidden_tokens: [';', 'eval', 'exec', '__import__'],
           allowed_imports: imports || [],
+          topics: inferTaskTopics({
+            slug: task.slug,
+            title: task.title,
+            statement: task.statement,
+            signature: task.signature,
+          }),
           timeout_ms: 2000,
         }),
         status: 'published',

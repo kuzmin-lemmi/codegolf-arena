@@ -4,9 +4,9 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, ChevronDown, LogOut, Loader2, Code2, Sun, Moon } from 'lucide-react';
+import { User, ChevronDown, LogOut, Loader2, Code2, Sun, Moon, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -25,6 +25,12 @@ export function Header() {
   const { user, isLoading, isLoggedIn, logout } = useAuth();
   const { theme, toggleTheme, mounted } = useTheme();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setUserMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     setUserMenuOpen(false);
@@ -83,6 +89,14 @@ export function Header() {
 
           {/* Пользователь + Тема */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-background-tertiary transition-colors md:hidden"
+              aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
             {/* Кнопка темы */}
             {mounted && (
               <button
@@ -153,6 +167,42 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-border bg-background-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-background-secondary/80">
+          <nav className="container mx-auto px-4 py-3 grid gap-1">
+            {navigation.map((item) => {
+              const isActive = !('external' in item) && pathname === item.href;
+              const className = cn(
+                'flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
+                isActive
+                  ? 'text-accent-blue bg-accent-blue/10'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-background-tertiary'
+              );
+
+              if ('external' in item && item.external) {
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    className={className}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span>{item.name}</span>
+                  </a>
+                );
+              }
+
+              return (
+                <Link key={item.name} href={item.href} className={className}>
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

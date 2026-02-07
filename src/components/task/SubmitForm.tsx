@@ -302,7 +302,7 @@ export function SubmitForm({
       {/* Visual code scaffold */}
       <div className="rounded-lg border border-border overflow-hidden">
         {/* Static header - function definition */}
-        <div className="bg-[rgb(var(--code-header))] px-4 py-2 border-b border-[rgb(var(--code-border))] font-mono text-sm flex items-center justify-between">
+        <div className="bg-[rgb(var(--code-header))] px-3 sm:px-4 py-2 border-b border-[rgb(var(--code-border))] font-mono text-xs sm:text-sm flex items-center justify-between gap-3">
           <div>
             <span className="text-[rgb(var(--code-keyword))]">def</span>{' '}
             <span className="text-[rgb(var(--code-func))]">solution</span>
@@ -310,10 +310,10 @@ export function SubmitForm({
             <span className="text-[rgb(var(--code-arg))]">{functionArgs.join(', ')}</span>
             <span className="text-[rgb(var(--code-muted))]">):</span>
           </div>
-          <div className="text-[rgb(var(--code-muted))]">
+          <div className="text-[rgb(var(--code-muted))] whitespace-nowrap">
             <span className="text-[rgb(var(--code-text))]">Длина:</span>{' '}
             <span className="text-[rgb(var(--code-accent))] font-bold">{length}</span>
-            <span className="text-[rgb(var(--code-muted))]"> символов</span>
+            <span className="text-[rgb(var(--code-muted))] hidden sm:inline"> символов</span>
           </div>
         </div>
         
@@ -397,7 +397,7 @@ export function SubmitForm({
         <div className="text-sm text-accent-blue">{submitQueueStatus}</div>
       )}
 
-      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 py-2">
+      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
         <div className={cn('mx-auto max-w-3xl grid gap-2', isLoggedIn ? 'grid-cols-3' : 'grid-cols-2')}>
           {isLoggedIn ? (
             <Button

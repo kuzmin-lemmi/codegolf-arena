@@ -22,6 +22,7 @@ interface TaskApiData {
     forbidden_tokens: string[];
     allowed_imports: string[];
     timeout_ms: number;
+    topics?: string[];
   };
   testcases: Array<{
     id: string;
@@ -91,6 +92,7 @@ export default function EditTaskPage() {
     exampleOutput: task.exampleOutput,
     forbiddenTokens: (task.constraintsJson?.forbidden_tokens || []).join(', '),
     allowedImports: (task.constraintsJson?.allowed_imports || []).join(', '),
+    topics: (task.constraintsJson?.topics || []).join(', '),
     timeoutMs: task.constraintsJson?.timeout_ms || 2000,
     testcases: task.testcases.map((tc, idx) => ({
       id: tc.id || String(idx + 1),

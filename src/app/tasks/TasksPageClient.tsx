@@ -7,6 +7,7 @@ import { Button, Card, TierBadge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { TaskTier } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { topicLabel } from '@/lib/task-topics';
 
 interface TaskListItem {
   id: string;
@@ -16,6 +17,7 @@ interface TaskListItem {
   mode: 'practice' | 'tournament';
   functionSignature: string;
   statementMd: string;
+  topics: string[];
   createdAt: Date | string;
   participantsCount: number;
   bestLength: number | null;
@@ -41,7 +43,19 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
   const [tier, setTier] = useState<TierFilter>('all');
   const [progress, setProgress] = useState<ProgressFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('popular');
+  const [topic, setTopic] = useState<string>('all');
   const [solvedSlugs, setSolvedSlugs] = useState<Set<string>>(new Set());
+
+  const topicOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const task of tasks) {
+      for (const value of task.topics || []) {
+        const normalized = String(value).trim().toLowerCase();
+        if (normalized) set.add(normalized);
+      }
+    }
+    return ['all', ...Array.from(set).sort()];
+  }, [tasks]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -69,6 +83,8 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
     const list = tasks.filter((task) => {
       if (tier !== 'all' && task.tier !== tier) return false;
 
+      if (topic !== 'all' && !(task.topics || []).includes(topic)) return false;
+
       const solved = solvedSlugs.has(task.slug);
       if (progress === 'solved' && !solved) return false;
       if (progress === 'unsolved' && solved) return false;
@@ -95,7 +111,7 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
     });
 
     return list;
-  }, [tasks, search, tier, progress, sortMode, solvedSlugs]);
+  }, [tasks, search, tier, topic, progress, sortMode, solvedSlugs]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -152,6 +168,22 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
             label="Уже решал"
           />
         </div>
+
+        {topicOptions.length > 1 && (
+          <div className="mt-4">
+            <div className="text-xs text-text-muted mb-2">Темы</div>
+            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0">
+              {topicOptions.map((topicOption) => (
+                <FilterButton
+                  key={topicOption}
+                  active={topic === topicOption}
+                  onClick={() => setTopic(topicOption)}
+                  label={topicOption === 'all' ? 'Все темы' : topicLabel(topicOption)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-text-muted">
@@ -252,6 +284,11 @@ function TaskCard({ task, solved }: { task: TaskListItem; solved: boolean }) {
                 Уже решена
               </span>
             )}
+            {(task.topics || []).slice(0, 4).map((topic) => (
+              <span key={topic} className="badge bg-accent-blue/10 text-accent-blue border border-accent-blue/30">
+                #{topicLabel(topic)}
+              </span>
+            ))}
           </div>
         </div>
 

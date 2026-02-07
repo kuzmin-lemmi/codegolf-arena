@@ -38,6 +38,7 @@ export interface TaskConstraints {
   allowed_imports: string[];
   timeout_ms: number;
   memory_limit_mb?: number;
+  topics?: string[];
 }
 
 export interface Testcase {
