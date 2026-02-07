@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin';
+import { validateMutationRequest } from '@/lib/security';
 
 // GET - текущий турнир недели
 export async function GET(request: NextRequest) {
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
 
 // POST - создание/обновление турнира недели
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
@@ -83,36 +87,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Деактивируем предыдущий турнир
-    await prisma.weeklyChallenge.updateMany({
-      where: { isActive: true },
-      data: { isActive: false },
-    });
+    const weeklyChallenge = await prisma.$transaction(async (tx) => {
+      await tx.weeklyChallenge.updateMany({
+        where: { isActive: true },
+        data: { isActive: false },
+      });
 
-    // Создаём новый турнир
-    const weeklyChallenge = await prisma.weeklyChallenge.create({
-      data: {
-        taskId,
-        startsAt: startDate,
-        endsAt: endDate,
-        isActive: isActive ?? true,
-      },
-      include: {
-        task: {
-          select: {
-            id: true,
-            slug: true,
-            title: true,
-            tier: true,
+      const created = await tx.weeklyChallenge.create({
+        data: {
+          taskId,
+          startsAt: startDate,
+          endsAt: endDate,
+          isActive: isActive ?? true,
+        },
+        include: {
+          task: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              tier: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Обновляем режим задачи на tournament
-    await prisma.task.update({
-      where: { id: taskId },
-      data: { mode: 'tournament' },
+      await tx.task.update({
+        where: { id: taskId },
+        data: { mode: 'tournament' },
+      });
+
+      return created;
     });
 
     return NextResponse.json({
@@ -130,6 +135,9 @@ export async function POST(request: NextRequest) {
 
 // PATCH - обновление статуса турнира
 export async function PATCH(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 

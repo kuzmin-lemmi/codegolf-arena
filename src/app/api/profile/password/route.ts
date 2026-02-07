@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { validateMutationRequest } from '@/lib/security';
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const currentUser = await getCurrentUser(request);
 

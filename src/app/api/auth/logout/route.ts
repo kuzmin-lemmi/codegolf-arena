@@ -2,10 +2,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteSession } from '@/lib/auth';
+import { validateMutationRequest } from '@/lib/security';
 
 const SESSION_COOKIE_NAME = 'arena_session';
 
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
@@ -19,7 +23,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 0,
       path: '/',
     });

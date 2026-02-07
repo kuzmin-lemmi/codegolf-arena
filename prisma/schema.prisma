@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = env("DATABASE_PROVIDER")
   url      = env("DATABASE_URL")
 }
 
@@ -33,6 +33,7 @@ model User {
   bestSubmissions BestSubmission[]
   sessions        Session[]
   competitionEntries CompetitionEntry[]
+  submissionJobs  SubmissionJob[]
 
   @@map("users")
 }
@@ -197,4 +198,27 @@ model CompetitionEntry {
 
   @@unique([competitionId, userId])
   @@map("competition_entries")
+}
+
+model SubmissionJob {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  taskSlug   String   @map("task_slug")
+  dedupKey   String   @map("dedup_key")
+  payloadJson String  @map("payload_json")
+  status     String   @default("queued")
+  attempts   Int      @default(0)
+  resultJson String?  @map("result_json")
+  errorMsg   String?  @map("error_msg")
+  startedAt  DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, taskSlug])
+  @@index([dedupKey, status])
+  @@map("submission_jobs")
 }

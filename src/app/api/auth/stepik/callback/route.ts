@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: SESSION_MAX_AGE,
       path: '/',
     });
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('arena_return_to', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 0,
       path: '/',
     });
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(OAUTH_STATE_COOKIE, '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 0,
       path: '/',
     });

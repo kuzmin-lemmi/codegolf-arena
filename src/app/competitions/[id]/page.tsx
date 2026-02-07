@@ -9,12 +9,14 @@ import { formatTimeRemaining, cn } from '@/lib/utils';
 import type { TaskTier } from '@/types';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+
   const competition = await prisma.competition.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { title: true },
   });
 
@@ -71,7 +73,8 @@ async function getCompetition(id: string) {
 }
 
 export default async function CompetitionPage({ params }: Props) {
-  const competition = await getCompetition(params.id);
+  const { id } = await params;
+  const competition = await getCompetition(id);
 
   if (!competition) {
     notFound();

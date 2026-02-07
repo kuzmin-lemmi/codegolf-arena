@@ -3,18 +3,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin, validateTaskData } from '@/lib/admin';
+import { validateMutationRequest } from '@/lib/security';
 
 // GET - получение задачи по ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   try {
+    const { id } = await params;
+
     const task = await prisma.task.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         testcases: {
           orderBy: { orderIndex: 'asc' },
@@ -53,12 +56,17 @@ export async function GET(
 // PUT - обновление задачи
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   try {
+    const { id } = await params;
+
     const body = await request.json();
     const validation = validateTaskData(body);
 
@@ -73,7 +81,7 @@ export async function PUT(
 
     // Проверяем, что задача существует
     const existing = await prisma.task.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existing) {
@@ -96,36 +104,38 @@ export async function PUT(
       }
     }
 
-    // Обновляем задачу
-    const task = await prisma.task.update({
-      where: { id: params.id },
-      data: {
-        slug: data.slug,
-        title: data.title,
-        tier: data.tier,
-        mode: data.mode,
-        statementMd: data.statementMd,
-        functionSignature: data.functionSignature,
-        functionArgs: JSON.stringify(data.functionArgs),
-        exampleInput: data.exampleInput,
-        exampleOutput: data.exampleOutput,
-        constraintsJson: JSON.stringify(data.constraints),
-      },
-    });
+    const task = await prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id },
+        data: {
+          slug: data.slug,
+          title: data.title,
+          tier: data.tier,
+          mode: data.mode,
+          statementMd: data.statementMd,
+          functionSignature: data.functionSignature,
+          functionArgs: JSON.stringify(data.functionArgs),
+          exampleInput: data.exampleInput,
+          exampleOutput: data.exampleOutput,
+          constraintsJson: JSON.stringify(data.constraints),
+        },
+      });
 
-    // Удаляем старые тесты и создаём новые
-    await prisma.testcase.deleteMany({
-      where: { taskId: params.id },
-    });
+      await tx.testcase.deleteMany({
+        where: { taskId: id },
+      });
 
-    await prisma.testcase.createMany({
-      data: data.testcases.map((tc, idx) => ({
-        taskId: params.id,
-        inputData: JSON.stringify(tc.inputData),
-        expectedOutput: tc.expectedOutput,
-        isHidden: tc.isHidden,
-        orderIndex: idx,
-      })),
+      await tx.testcase.createMany({
+        data: data.testcases.map((tc, idx) => ({
+          taskId: id,
+          inputData: JSON.stringify(tc.inputData),
+          expectedOutput: tc.expectedOutput,
+          isHidden: tc.isHidden,
+          orderIndex: idx,
+        })),
+      });
+
+      return updatedTask;
     });
 
     return NextResponse.json({
@@ -148,12 +158,17 @@ export async function PUT(
 // PATCH - изменение статуса (publish/unpublish)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   try {
+    const { id } = await params;
+
     const body = await request.json();
     const { status } = body;
 
@@ -165,7 +180,7 @@ export async function PATCH(
     }
 
     const task = await prisma.task.update({
-      where: { id: params.id },
+      where: { id },
       data: { status },
     });
 
@@ -185,15 +200,20 @@ export async function PATCH(
 // DELETE - удаление задачи
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   try {
+    const { id } = await params;
+
     // Проверяем, что нет решений
     const submissions = await prisma.submission.count({
-      where: { taskId: params.id },
+      where: { taskId: id },
     });
 
     if (submissions > 0) {
@@ -205,12 +225,12 @@ export async function DELETE(
 
     // Удаляем тесты
     await prisma.testcase.deleteMany({
-      where: { taskId: params.id },
+      where: { taskId: id },
     });
 
     // Удаляем задачу
     await prisma.task.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({

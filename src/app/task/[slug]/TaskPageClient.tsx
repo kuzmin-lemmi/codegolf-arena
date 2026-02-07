@@ -48,12 +48,18 @@ export function TaskPageClient({
   const top3Target = leaderboard.length >= 3 ? leaderboard[2].codeLength : bestLength;
   const toTop1 = editorLength !== null && bestLength !== null ? editorLength - bestLength : null;
   const toTop3 = editorLength !== null && top3Target !== null ? editorLength - top3Target : null;
+  const top1Progress = editorLength !== null && bestLength !== null
+    ? Math.max(0, Math.min(100, Math.round((bestLength / editorLength) * 100)))
+    : null;
+  const top3Progress = editorLength !== null && top3Target !== null
+    ? Math.max(0, Math.min(100, Math.round((top3Target / editorLength) * 100)))
+    : null;
 
   return (
     <div className="space-y-6">
       <Card padding="lg">
-        <h2 className="text-lg font-semibold mb-4">Твоё решение</h2>
-        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-2 text-sm text-text-secondary">
+        <h2 className="text-base sm:text-lg font-semibold mb-4">Твоё решение</h2>
+        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary space-y-2">
           {bestLength !== null ? (
             <>
               Текущий лучший результат: <span className="font-mono text-accent-green font-semibold">{bestLength}</span>
@@ -70,9 +76,9 @@ export function TaskPageClient({
             </>
           )}
           {editorLength !== null && (
-            <div className="mt-2 text-xs">
+            <div className="text-xs space-y-2">
               {toTop1 !== null && (
-                <span>
+                <div>
                   {toTop1 > 0 ? (
                     <>До топ-1: <span className="font-mono text-accent-blue font-semibold">-{toTop1}</span> символов</>
                   ) : toTop1 === 0 ? (
@@ -80,16 +86,42 @@ export function TaskPageClient({
                   ) : (
                     <>Ты уже короче текущего топ-1 на <span className="font-mono text-accent-green font-semibold">{Math.abs(toTop1)}</span> символов.</>
                   )}
-                </span>
+                </div>
               )}
               {toTop3 !== null && (
-                <span className="ml-3">
+                <div>
                   {toTop3 > 0 ? (
                     <>До топ-3: <span className="font-mono text-accent-blue font-semibold">-{toTop3}</span></>
                   ) : (
                     <>Текущая длина уже тянет на топ-3.</>
                   )}
-                </span>
+                </div>
+              )}
+              {(top1Progress !== null || top3Progress !== null) && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {top1Progress !== null && (
+                    <div className="rounded-md border border-border/70 px-2 py-1.5 bg-background/40">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1">
+                        <span>Прогресс к топ-1</span>
+                        <span>{top1Progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded bg-background-tertiary overflow-hidden">
+                        <div className="h-full rounded bg-accent-green" style={{ width: `${top1Progress}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  {top3Progress !== null && (
+                    <div className="rounded-md border border-border/70 px-2 py-1.5 bg-background/40">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1">
+                        <span>Прогресс к топ-3</span>
+                        <span>{top3Progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded bg-background-tertiary overflow-hidden">
+                        <div className="h-full rounded bg-accent-blue" style={{ width: `${top3Progress}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -117,8 +149,8 @@ export function TaskPageClient({
 
       {testcases.length > 0 && (
         <Card padding="lg">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Открытые тесты</h3>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-base sm:text-lg font-semibold">Открытые тесты</h3>
             <span className="text-xs text-text-muted">проверяются локально</span>
           </div>
           <div className="space-y-3">

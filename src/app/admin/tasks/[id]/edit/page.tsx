@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -31,11 +31,13 @@ interface TaskApiData {
   }>;
 }
 
-export default function EditTaskPage({ params }: { params: { id: string } }) {
+export default function EditTaskPage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const { user, isLoading, isLoggedIn } = useAuth();
   const [task, setTask] = useState<TaskApiData | null>(null);
   const [isFetching, setIsFetching] = useState(true);
+  const taskId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
   useEffect(() => {
     if (!isLoading && (!isLoggedIn || !user?.isAdmin)) {
@@ -44,12 +46,12 @@ export default function EditTaskPage({ params }: { params: { id: string } }) {
   }, [isLoading, isLoggedIn, user, router]);
 
   useEffect(() => {
-    if (!user?.isAdmin) return;
+    if (!user?.isAdmin || !taskId) return;
 
     const fetchTask = async () => {
       setIsFetching(true);
       try {
-        const res = await fetch(`/api/admin/tasks/${params.id}`, {
+        const res = await fetch(`/api/admin/tasks/${taskId}`, {
           credentials: 'include',
         });
         const json = await res.json();
@@ -65,7 +67,7 @@ export default function EditTaskPage({ params }: { params: { id: string } }) {
     };
 
     fetchTask();
-  }, [params.id, router, user?.isAdmin]);
+  }, [taskId, router, user?.isAdmin]);
 
   if (isLoading || !user?.isAdmin || isFetching) {
     return (
@@ -99,7 +101,9 @@ export default function EditTaskPage({ params }: { params: { id: string } }) {
   };
 
   const handleSubmit = async (data: any) => {
-    const res = await fetch(`/api/admin/tasks/${params.id}`, {
+    if (!taskId) return;
+
+    const res = await fetch(`/api/admin/tasks/${taskId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

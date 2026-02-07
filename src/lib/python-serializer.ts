@@ -75,6 +75,75 @@ print(solution(${testArgsStr}))
 `;
 }
 
+interface BatchTestcaseInput {
+  index: number;
+  args: unknown[];
+  expectedOutput: string;
+  isHidden: boolean;
+}
+
+/**
+ * Генерирует Python код для прогона всех тестов за один запуск
+ */
+export function generateBatchTestCode(
+  userCode: string,
+  functionArgs: string[],
+  testcases: BatchTestcaseInput[],
+  allowedImports: string[] = []
+): string {
+  const imports = allowedImports.length > 0
+    ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
+    : '';
+
+  const argsStr = functionArgs.join(', ');
+  const testsLiteral = testcases
+    .map((test) => {
+      const argsLiteral = `[${test.args.map(toPythonLiteral).join(', ')}]`;
+      return `{"index": ${test.index}, "args": ${argsLiteral}, "expected": ${toPythonLiteral(test.expectedOutput.trim())}, "hidden": ${test.isHidden ? 'True' : 'False'}}`;
+    })
+    .join(',\n    ');
+
+  return `${imports}import json
+
+def solution(${argsStr}):
+    return ${userCode}
+
+tests = [
+    ${testsLiteral}
+]
+
+results = []
+for test in tests:
+    try:
+        output = solution(*test["args"])
+        actual = '' if output is None else str(output).strip()
+        expected = str(test["expected"]).strip()
+        passed = actual == expected
+        results.append({
+            "index": test["index"],
+            "passed": passed,
+            "isHidden": test["hidden"],
+            "actual": actual if not test["hidden"] else None,
+            "expected": expected if not test["hidden"] else None,
+            "error": None,
+        })
+    except Exception as exc:
+        results.append({
+            "index": test["index"],
+            "passed": False,
+            "isHidden": test["hidden"],
+            "actual": None,
+            "expected": None,
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+
+payload = {"results": results}
+print("__ARENA_JSON_START__")
+print(json.dumps(payload, ensure_ascii=False))
+print("__ARENA_JSON_END__")
+`;
+}
+
 /**
  * Валидация однострочника с понятными сообщениями об ошибках
  */

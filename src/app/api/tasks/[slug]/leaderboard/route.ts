@@ -5,9 +5,11 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
+
     const { searchParams } = new URL(request.url);
     const rawLimit = searchParams.get('limit');
     const parsed = rawLimit ? Number.parseInt(rawLimit, 10) : NaN;
@@ -15,7 +17,7 @@ export async function GET(
 
     // Находим задачу
     const task = await prisma.task.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       select: { id: true, status: true },
     });
 

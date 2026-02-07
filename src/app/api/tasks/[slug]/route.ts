@@ -5,11 +5,13 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
+
     const task = await prisma.task.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       include: {
         testcases: {
           where: { isHidden: false }, // Только открытые тесты

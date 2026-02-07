@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin, validateTaskData } from '@/lib/admin';
+import { validateMutationRequest } from '@/lib/security';
 
 // GET - список всех задач (включая черновики)
 export async function GET(request: NextRequest) {
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
 
 // POST - создание новой задачи
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 

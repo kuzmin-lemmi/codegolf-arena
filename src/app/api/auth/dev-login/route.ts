@@ -2,16 +2,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { devLogin } from '@/lib/auth';
+import { isDevLoginAllowed, validateMutationRequest } from '@/lib/security';
 
 const SESSION_COOKIE_NAME = 'arena_session';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней
 
 // Только для разработки! Позволяет войти без Stepik OAuth
 export async function POST(request: NextRequest) {
-  // Запрещаем в продакшене
-  if (process.env.NODE_ENV === 'production') {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
+  if (!isDevLoginAllowed(request)) {
     return NextResponse.json(
-      { success: false, error: 'Dev login not available in production' },
+      { success: false, error: 'Dev login is disabled' },
       { status: 403 }
     );
   }
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: false, // dev mode
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: SESSION_MAX_AGE,
       path: '/',
     });

@@ -4,11 +4,15 @@ import { validateOneliner } from '@/lib/utils';
 import { executeCode } from '@/lib/piston';
 import { generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
 import { enqueueSubmit } from '@/lib/submit-queue';
+import { validateMutationRequest } from '@/lib/security';
 
 const OUTPUT_LIMIT_BYTES = 50 * 1024;
 const TOTAL_TIMEOUT_MS = 10_000;
 
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 

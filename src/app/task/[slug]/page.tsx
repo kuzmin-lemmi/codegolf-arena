@@ -11,12 +11,14 @@ import type { Metadata } from 'next';
 import type { Task, TaskConstraints, TaskMode, TaskStatus, TaskTier } from '@/types';
 
 interface TaskPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: TaskPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
   const task = await prisma.task.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     select: { title: true, status: true, statementMd: true },
   });
 
@@ -33,7 +35,7 @@ export async function generateMetadata({ params }: TaskPageProps): Promise<Metad
       title: `${task.title} — Арена однострочников`,
       description,
       type: 'article',
-      url: `https://codegolf.ru/task/${params.slug}`,
+      url: `https://codegolf.ru/task/${slug}`,
       siteName: 'Арена однострочников',
     },
     twitter: {
@@ -45,8 +47,10 @@ export async function generateMetadata({ params }: TaskPageProps): Promise<Metad
 }
 
 export default async function TaskPage({ params }: TaskPageProps) {
+  const { slug } = await params;
+
   const task = await prisma.task.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     include: {
       testcases: {
         where: { isHidden: false },
@@ -146,8 +150,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8 items-start">
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="grid lg:grid-cols-2 gap-6 md:gap-8 items-start">
           {/* Left Column - Task Statement (sticky) */}
           <div className="lg:sticky lg:top-20">
             <Card padding="lg">
@@ -158,7 +162,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
           {/* Right Column - Editor + Results (Client Component) */}
             <div className="space-y-6">
               <TaskPageClient
-                taskSlug={params.slug}
+                taskSlug={slug}
                 taskTitle={taskData.title}
                 nextTask={nextTask}
                 functionArgs={taskData.functionArgs}

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { validateMutationRequest } from '@/lib/security';
 
 // Получение профиля
 export async function GET(request: NextRequest) {
@@ -89,6 +90,9 @@ export async function GET(request: NextRequest) {
 
 // Обновление ника
 export async function PATCH(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     const currentUser = await getCurrentUser(request);
 

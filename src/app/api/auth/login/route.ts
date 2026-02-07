@@ -3,15 +3,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loginWithEmail, createSession } from '@/lib/auth';
 import { checkAuthRateLimit, getClientIP } from '@/lib/rate-limiter';
+import { validateMutationRequest } from '@/lib/security';
 
 const SESSION_COOKIE_NAME = 'arena_session';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней в секундах
 
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   try {
     // Rate limiting
     const clientIP = getClientIP(request);
-    const rateLimitResult = checkAuthRateLimit(clientIP);
+    const rateLimitResult = await checkAuthRateLimit(clientIP);
     
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: SESSION_MAX_AGE,
       path: '/',
     });

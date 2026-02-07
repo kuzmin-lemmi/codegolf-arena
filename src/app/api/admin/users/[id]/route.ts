@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin';
+import { validateMutationRequest } from '@/lib/security';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   try {
+    const { id } = await params;
+
     const body = await request.json();
     const { isAdmin } = body;
 
@@ -31,7 +37,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { isAdmin },
       select: { id: true, isAdmin: true },
     });

@@ -6,9 +6,11 @@ import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
+
     // Получаем текущего пользователя
     const currentUser = await getCurrentUser(request);
     
@@ -21,7 +23,7 @@ export async function GET(
 
     // Находим задачу
     const task = await prisma.task.findUnique({
-      where: { slug: params.slug },
+      where: { slug },
       select: { 
         id: true, 
         status: true, 

@@ -321,8 +321,8 @@ export async function findOrCreateUserFromStepik(stepikUser: StepikUser) {
 
 // Для разработки без реального OAuth
 export async function devLogin(stepikUserId: number): Promise<{ user: any; token: string }> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Dev login not available in production');
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEV_LOGIN !== 'true') {
+    throw new Error('Dev login is disabled');
   }
 
   let user = await prisma.user.findUnique({

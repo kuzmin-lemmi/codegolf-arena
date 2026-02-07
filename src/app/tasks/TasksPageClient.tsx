@@ -100,18 +100,18 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       <Card padding="md" className="mb-6">
-        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
-              className="input pl-10"
+              className="input h-11 pl-10"
               placeholder="Поиск по названию или условию"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0">
             <FilterButton
               active={tier === 'all'}
               onClick={() => setTier('all')}
@@ -135,7 +135,7 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0">
           <FilterButton
             active={progress === 'all'}
             onClick={() => setProgress('all')}
@@ -151,13 +151,18 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
             onClick={() => setProgress('solved')}
             label="Уже решал"
           />
+        </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-xs text-text-muted">Сортировка:</span>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-text-muted">
+            Показано задач: <span className="text-text-primary font-medium">{filteredTasks.length}</span>
+          </div>
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <span className="text-xs text-text-muted whitespace-nowrap">Сортировка:</span>
             <select
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="input h-9 py-1 text-sm max-w-[220px]"
+              className="input h-10 py-1 text-sm w-full sm:w-auto sm:min-w-[220px]"
             >
               <option value="popular">Самые популярные</option>
               <option value="new">Новые</option>
@@ -199,7 +204,7 @@ function FilterButton({
       variant={active ? 'primary' : 'secondary'}
       size="sm"
       onClick={onClick}
-      className={cn(active ? '' : 'text-text-secondary')}
+      className={cn('whitespace-nowrap min-h-9', active ? '' : 'text-text-secondary')}
     >
       {label}
     </Button>

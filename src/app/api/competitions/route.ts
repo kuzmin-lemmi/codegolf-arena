@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/admin';
+import { validateMutationRequest } from '@/lib/security';
 
 // GET - список соревнований
 export async function GET() {
@@ -33,6 +34,9 @@ export async function GET() {
 
 // POST - создание соревнования (только админ)
 export async function POST(request: NextRequest) {
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
+
   const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 

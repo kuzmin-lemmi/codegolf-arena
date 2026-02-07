@@ -1,45 +1,90 @@
-// src/app/api/tasks/[slug]/submit/route.ts
-
+import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { validateOneliner, calculateCodeLength } from '@/lib/utils';
-import { executeCode } from '@/lib/piston';
-import { generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
-import { getPassPoints } from '@/lib/points';
-import { checkRateLimit } from '@/lib/rate-limiter';
-import { enqueueSubmit, SubmitQueueOverflowError } from '@/lib/submit-queue';
-import type { TaskTier } from '@/types';
+import { validateOneliner } from '@/lib/utils';
+import { checkRateLimit, checkSubmitStatusRateLimit } from '@/lib/rate-limiter';
+import {
+  enqueueTaskSubmissionJob,
+  getSubmissionJob,
+  SubmissionJobsOverflowError,
+} from '@/lib/submission-jobs';
+import { validateMutationRequest } from '@/lib/security';
 
-const OUTPUT_LIMIT_BYTES = 50 * 1024;
-const TOTAL_TIMEOUT_MS = 10_000;
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await params;
+
+    const currentUser = await getCurrentUser(request);
+    if (!currentUser) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const jobId = request.nextUrl.searchParams.get('jobId');
+    if (!jobId) {
+      return NextResponse.json({ success: false, error: 'jobId is required' }, { status: 400 });
+    }
+
+    const pollRateLimit = await checkSubmitStatusRateLimit(currentUser.id, slug);
+    if (!pollRateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Слишком частый опрос статуса. Попробуйте через ${pollRateLimit.retryAfter} сек.`,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(pollRateLimit.retryAfter),
+          },
+        }
+      );
+    }
+
+    const job = await getSubmissionJob(jobId, currentUser.id, slug);
+    if (!job) {
+      return NextResponse.json({ success: false, error: 'Job not found' }, { status: 404 });
+    }
+
+    if (job.status === 'done') {
+      return NextResponse.json({ success: true, status: 'done', data: job.result });
+    }
+
+    if (job.status === 'failed') {
+      return NextResponse.json({ success: true, status: 'failed', error: job.error || 'Submission failed' });
+    }
+
+    return NextResponse.json({ success: true, status: job.status });
+  } catch (error) {
+    console.error('Error getting submit job status:', error);
+    return NextResponse.json({ success: false, error: 'Failed to get job status' }, { status: 500 });
+  }
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  try {
-    // Получаем текущего пользователя (может быть null для гостя)
-    const currentUser = await getCurrentUser(request);
+  const csrfError = validateMutationRequest(request);
+  if (csrfError) return csrfError;
 
-    // Получаем код из запроса
+  try {
+    const { slug } = await params;
+
+    const currentUser = await getCurrentUser(request);
     const body = await request.json();
     const { code } = body;
 
     if (!code || typeof code !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Code is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 });
     }
 
-    // Валидация однострочника
     const validation = validateOneliner(code);
     if (!validation.valid) {
-      return NextResponse.json(
-        { success: false, error: validation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
 
     if (!currentUser) {
@@ -49,26 +94,16 @@ export async function POST(
       );
     }
 
-    // Находим задачу с тестами
     const task = await prisma.task.findUnique({
-      where: { slug: params.slug },
-      include: {
-        testcases: {
-          orderBy: { orderIndex: 'asc' },
-        },
-      },
+      where: { slug },
+      select: { id: true, constraintsJson: true, status: true },
     });
 
     if (!task || task.status !== 'published') {
-      return NextResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
     }
 
-    // Проверяем rate limit (10 сабмитов/мин/пользователь/задача)
-    const rateLimitKey = currentUser.id;
-    const rateLimitResult = checkRateLimit(rateLimitKey, task.id);
+    const rateLimitResult = await checkRateLimit(currentUser.id, task.id);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         {
@@ -90,278 +125,48 @@ export async function POST(
       );
     }
 
-    const runSubmission = async () => {
-      const codeLength = calculateCodeLength(code);
-      const constraints = JSON.parse(task.constraintsJson);
-      const functionArgs = JSON.parse(task.functionArgs);
-
-      // Проверка на запрещённые токены
-      for (const token of constraints.forbidden_tokens || []) {
-        if (code.includes(token)) {
-          return NextResponse.json(
-            { success: false, error: `Запрещённый токен: ${token}` },
-            { status: 400 }
-          );
-        }
-      }
-
-      const testResults: Array<{
-        index: number;
-        passed: boolean;
-        isHidden: boolean;
-        input?: string;
-        expected?: string;
-        actual?: string;
-        error?: string | null;
-      }> = [];
-
-      let allPassed = true;
-      let outputBytes = 0;
-      let timeLimitExceeded = false;
-      let outputLimitExceeded = false;
-      let submissionError: string | null = null;
-
-      const startTime = Date.now();
-      const deadline = startTime + TOTAL_TIMEOUT_MS;
-
-      for (const testcase of task.testcases) {
-        const remainingMs = deadline - Date.now();
-        if (remainingMs <= 0) {
-          timeLimitExceeded = true;
-          allPassed = false;
-          submissionError = 'Time limit exceeded';
-          testResults.push({
-            index: testcase.orderIndex,
-            passed: false,
-            isHidden: testcase.isHidden,
-            error: 'Time limit exceeded',
-          });
-          break;
-        }
-
-        const inputData = JSON.parse(testcase.inputData);
-        const args = inputData.args;
-
-        const wrappedCode = generateTestCode(
-          code,
-          functionArgs,
-          args,
-          constraints.allowed_imports || []
+    const constraints = JSON.parse(task.constraintsJson);
+    for (const token of constraints.forbidden_tokens || []) {
+      if (code.includes(token)) {
+        return NextResponse.json(
+          { success: false, error: `Запрещённый токен: ${token}` },
+          { status: 400 }
         );
-
-        const perTestTimeout = Math.min(constraints.timeout_ms || 2000, remainingMs);
-        const signal = AbortSignal.timeout(perTestTimeout);
-
-        const result = await executeCode(wrappedCode, perTestTimeout, signal);
-
-        const stdoutBytes = Buffer.byteLength(result.stdout || '', 'utf8');
-        const stderrBytes = Buffer.byteLength(result.stderr || '', 'utf8');
-        outputBytes += stdoutBytes + stderrBytes;
-
-        if (outputBytes > OUTPUT_LIMIT_BYTES) {
-          outputLimitExceeded = true;
-          allPassed = false;
-          submissionError = 'Output limit exceeded';
-          testResults.push({
-            index: testcase.orderIndex,
-            passed: false,
-            isHidden: testcase.isHidden,
-            error: 'Output limit exceeded',
-          });
-          break;
-        }
-
-        if (result.error && /aborted/i.test(result.error)) {
-          timeLimitExceeded = true;
-          allPassed = false;
-          submissionError = 'Time limit exceeded';
-          testResults.push({
-            index: testcase.orderIndex,
-            passed: false,
-            isHidden: testcase.isHidden,
-            error: 'Time limit exceeded',
-          });
-          break;
-        }
-
-        const actualOutput = result.output.trim();
-        const expectedOutput = testcase.expectedOutput.trim();
-        const passed = actualOutput === expectedOutput;
-
-        if (!passed) allPassed = false;
-        if (!passed && !submissionError && result.error) {
-          submissionError = result.error;
-        }
-
-        testResults.push({
-          index: testcase.orderIndex,
-          passed,
-          isHidden: testcase.isHidden,
-          ...(testcase.isHidden
-            ? {}
-            : {
-                input: args.map(toPythonLiteral).join(', '),
-                expected: expectedOutput,
-                actual: actualOutput,
-              }),
-          error: result.error || null,
-        });
       }
+    }
 
-      if (timeLimitExceeded && !submissionError) {
-        submissionError = 'Time limit exceeded';
-      }
-      if (outputLimitExceeded && !submissionError) {
-        submissionError = 'Output limit exceeded';
-      }
+    const codeHash = createHash('sha256').update(`${task.id}:${code}`).digest('hex');
+    const dedupKey = `${currentUser.id}:${task.id}:${codeHash}`;
 
-      const runtimeMs = Date.now() - startTime;
-      const testsPassed = testResults.filter((t) => t.passed).length;
-      const testsTotal = testResults.length;
-      const status = allPassed ? 'pass' : 'fail';
-
-      let submissionId: string | null = null;
-      let place: number | null = null;
-      let isNewBest = false;
-      let pointsEarned = 0;
-      let pointsBreakdown: string[] = [];
-
-      if (currentUser) {
-        const transactionResult = await prisma.$transaction(async (tx) => {
-          const submission = await tx.submission.create({
-            data: {
-              taskId: task.id,
-              userId: currentUser.id,
-              code,
-              codeLength,
-              status,
-              testsPassed,
-              testsTotal,
-              runtimeMs,
-              errorMsg: submissionError,
-            },
-          });
-
-          let txIsNewBest = false;
-          let txPointsEarned = 0;
-          let txPointsBreakdown: string[] = [];
-          let txPlace: number | null = null;
-
-          if (allPassed) {
-            const existingBest = await tx.bestSubmission.findUnique({
-              where: {
-                taskId_userId: {
-                  taskId: task.id,
-                  userId: currentUser.id,
-                },
-              },
-            });
-
-            if (!existingBest || codeLength < existingBest.codeLength) {
-              await tx.bestSubmission.upsert({
-                where: {
-                  taskId_userId: {
-                    taskId: task.id,
-                    userId: currentUser.id,
-                  },
-                },
-                update: {
-                  submissionId: submission.id,
-                  codeLength,
-                  achievedAt: new Date(),
-                },
-                create: {
-                  taskId: task.id,
-                  userId: currentUser.id,
-                  submissionId: submission.id,
-                  codeLength,
-                  achievedAt: new Date(),
-                },
-              });
-
-              txIsNewBest = true;
-            }
-
-            const ranks = await tx.$queryRaw<Array<{ place: bigint }>>`
-              SELECT rnk AS place
-              FROM (
-                SELECT
-                  task_id,
-                  user_id,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY task_id
-                    ORDER BY code_length ASC, achieved_at ASC, user_id ASC
-                  ) AS rnk
-                FROM best_submissions
-              ) ranked
-              WHERE task_id = ${task.id} AND user_id = ${currentUser.id}
-            `;
-
-            const rawPlace = ranks?.[0]?.place;
-            txPlace = rawPlace === undefined || rawPlace === null ? null : Number(rawPlace);
-
-            if (!existingBest) {
-              txPointsEarned = getPassPoints(task.tier as TaskTier);
-              txPointsBreakdown.push(`PASS (${task.tier}): +${txPointsEarned}`);
-
-              await tx.user.update({
-                where: { id: currentUser.id },
-                data: {
-                  totalPoints: {
-                    increment: txPointsEarned,
-                  },
-                },
-              });
-            }
-          }
-
-          return {
-            submissionId: submission.id,
-            isNewBest: txIsNewBest,
-            pointsEarned: txPointsEarned,
-            pointsBreakdown: txPointsBreakdown,
-            place: txPlace,
-          };
-        });
-
-        submissionId = transactionResult.submissionId;
-        isNewBest = transactionResult.isNewBest;
-        pointsEarned = transactionResult.pointsEarned;
-        pointsBreakdown = transactionResult.pointsBreakdown;
-        place = transactionResult.place;
-      }
+    try {
+      const jobId = await enqueueTaskSubmissionJob({
+        userId: currentUser.id,
+        taskSlug: slug,
+        dedupKey,
+        payload: {
+          userId: currentUser.id,
+          taskSlug: slug,
+          code,
+        },
+      });
 
       return NextResponse.json(
         {
           success: true,
-          data: {
-            submissionId,
-            status,
-            length: codeLength,
-            testsPassed,
-            testsTotal,
-            place,
-            isNewBest,
-            pointsEarned,
-            pointsBreakdown,
-            details: testResults
-              .filter((t) => !t.isHidden)
-              .map(({ isHidden, ...rest }) => rest),
-          },
+          queued: true,
+          jobId,
+          status: 'queued',
         },
         {
+          status: 202,
           headers: {
             'X-RateLimit-Limit': '10',
             'X-RateLimit-Remaining': String(rateLimitResult.remaining || 0),
           },
         }
       );
-    };
-
-    try {
-      return await enqueueSubmit(runSubmission);
     } catch (error) {
-      if (error instanceof SubmitQueueOverflowError) {
+      if (error instanceof SubmissionJobsOverflowError) {
         return NextResponse.json(
           { success: false, error: 'Server overloaded, try later' },
           { status: 503 }
@@ -371,18 +176,6 @@ export async function POST(
     }
   } catch (error) {
     console.error('Error submitting solution:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to submit solution' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to submit solution' }, { status: 500 });
   }
 }
-
-function getAnonRateLimitKey(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  const ip = request.ip || forwarded?.split(',')[0]?.trim() || realIp || 'anonymous';
-  return `anon:${ip}`;
-}
-
-// wrapCode удалён: используем generateTestCode из python-serializer

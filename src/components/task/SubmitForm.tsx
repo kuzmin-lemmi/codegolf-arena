@@ -75,6 +75,7 @@ export function SubmitForm({
   const draftKey = useMemo(() => `task_draft:${taskSlug}`, [taskSlug]);
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitQueueStatus, setSubmitQueueStatus] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [localResult, setLocalResult] = useState<LocalCheckResult | null>(null);
@@ -118,6 +119,7 @@ export function SubmitForm({
     if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
+    setSubmitQueueStatus(null);
     setResult(null);
     setLocalResult(null);
 
@@ -142,9 +144,18 @@ export function SubmitForm({
         return;
       }
 
-      setResult(data.data);
-      if (onSubmitSuccess) {
-        onSubmitSuccess(data.data as SubmitResult);
+      if (data.queued && data.jobId) {
+        setSubmitQueueStatus('Задача поставлена в очередь...');
+        const finalResult = await pollSubmitJob(data.jobId as string);
+        setResult(finalResult);
+        if (onSubmitSuccess) {
+          onSubmitSuccess(finalResult);
+        }
+      } else if (data.data) {
+        setResult(data.data);
+        if (onSubmitSuccess) {
+          onSubmitSuccess(data.data as SubmitResult);
+        }
       }
     } catch (error) {
       setResult({
@@ -157,7 +168,54 @@ export function SubmitForm({
       });
     } finally {
       setIsSubmitting(false);
+      setSubmitQueueStatus(null);
     }
+  };
+
+  const pollSubmitJob = async (jobId: string): Promise<SubmitResult> => {
+    const maxAttempts = 80;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const statusRes = await fetch(
+        `/api/tasks/${taskSlug}/submit?jobId=${encodeURIComponent(jobId)}`,
+        { cache: 'no-store' }
+      );
+
+      if (statusRes.status === 429) {
+        const retryAfter = Number(statusRes.headers.get('Retry-After') || '1');
+        setSubmitQueueStatus('Сервер перегружен, ждём окно для проверки статуса...');
+        await new Promise((resolve) => setTimeout(resolve, Math.max(retryAfter, 1) * 1000));
+        continue;
+      }
+
+      const statusData = await statusRes.json();
+
+      if (!statusData.success) {
+        throw new Error(statusData.error || 'Не удалось получить статус проверки');
+      }
+
+      if (statusData.status === 'queued') {
+        setSubmitQueueStatus('В очереди на проверку...');
+        continue;
+      }
+
+      if (statusData.status === 'running') {
+        setSubmitQueueStatus('Проверяется на сервере...');
+        continue;
+      }
+
+      if (statusData.status === 'done' && statusData.data) {
+        return statusData.data as SubmitResult;
+      }
+
+      if (statusData.status === 'failed') {
+        throw new Error(statusData.error || 'Проверка завершилась ошибкой');
+      }
+    }
+
+    throw new Error('Слишком долго выполняется. Проверь результат чуть позже.');
   };
 
   // Локальная проверка через Pyodide
@@ -239,7 +297,7 @@ export function SubmitForm({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24 sm:pb-0">
       {/* Code Editor */}
       {/* Visual code scaffold */}
       <div className="rounded-lg border border-border overflow-hidden">
@@ -286,7 +344,7 @@ export function SubmitForm({
       </div>
 
       {/* Buttons */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-3">
         {isLoggedIn && (
           <Button
             variant="primary"
@@ -334,6 +392,52 @@ export function SubmitForm({
           <span>Загружается Python (~10 МБ, только первый раз)...</span>
         </div>
       )}
+
+      {isSubmitting && submitQueueStatus && (
+        <div className="text-sm text-accent-blue">{submitQueueStatus}</div>
+      )}
+
+      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 py-2">
+        <div className={cn('mx-auto max-w-3xl grid gap-2', isLoggedIn ? 'grid-cols-3' : 'grid-cols-2')}>
+          {isLoggedIn ? (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+              loading={isSubmitting}
+              className="w-full"
+            >
+              В рейтинг
+            </Button>
+          ) : (
+            <Link href={`/auth?returnTo=${returnTo}`}>
+              <Button variant="secondary" className="w-full" icon={LogIn}>
+                Войти
+              </Button>
+            </Link>
+          )}
+
+          <Button
+            variant="ghost"
+            onClick={handleCheckLocally}
+            disabled={!canSubmit || isChecking || pyodideLoading}
+            className={cn('w-full', isChecking || pyodideLoading ? '[&>svg]:animate-spin' : '')}
+            icon={isChecking || pyodideLoading ? Loader2 : Play}
+          >
+            Проверить
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={handleReset}
+            disabled={isSubmitting || !code}
+            icon={RotateCcw}
+            className={cn('w-full', isLoggedIn ? '' : 'col-span-2')}
+          >
+            Сброс
+          </Button>
+        </div>
+      </div>
 
       {/* Server result */}
       {result && (

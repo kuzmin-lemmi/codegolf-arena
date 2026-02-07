@@ -13,7 +13,7 @@ import { hashToken } from '@/lib/auth';
 
 // Server-side admin check
 async function getAdminUser() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionToken = cookieStore.get('arena_session')?.value;
   
   if (!sessionToken) {

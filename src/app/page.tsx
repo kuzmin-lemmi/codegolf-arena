@@ -153,34 +153,34 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background to-background-secondary">
         <div className="hero-radial absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/10 via-transparent to-transparent" />
-        <div className="container mx-auto px-4 py-16 relative">
+        <div className="container mx-auto px-4 py-12 md:py-16 relative">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 text-accent-blue text-sm font-medium mb-6">
               <Zap className="w-4 h-4" />
               Python Code Golf
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
               Арена <span className="text-accent-blue">однострочников</span>
             </h1>
-            <p className="text-xl text-text-secondary mb-8">
+            <p className="text-base sm:text-lg md:text-xl text-text-secondary mb-7 max-w-2xl mx-auto">
               Решай задачи в одну строку. Соревнуйся за самый короткий код.
               Попади в топ рейтинга.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link href="/tasks">
-                <Button variant="primary" size="lg">
+                <Button variant="primary" size="lg" className="w-full sm:w-auto">
                   Начать решать
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
               <Link href="/leaderboard">
-                <Button variant="secondary" size="lg">
+                <Button variant="secondary" size="lg" className="w-full sm:w-auto">
                   <Trophy className="w-5 h-5" />
                   Рейтинг
                 </Button>
               </Link>
               <a href="https://t.me/codegolf_arena" target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="lg">
+                <Button variant="ghost" size="lg" className="w-full sm:w-auto">
                   <MessageCircle className="w-5 h-5" />
                   Чат Telegram
                 </Button>
@@ -195,12 +195,12 @@ export default async function HomePage() {
 
       {recommendedTask && (
         <section className="border-b border-border bg-background-secondary/20">
-          <div className="container mx-auto px-4 py-8">
+          <div className="container mx-auto px-4 py-6 md:py-8">
             <Card padding="lg" className="border-accent-blue/25 bg-accent-blue/5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-accent-blue mb-1">Рекомендуемая первая задача</div>
-                  <h2 className="text-xl font-semibold mb-1">{recommendedTask.title}</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold mb-1">{recommendedTask.title}</h2>
                   <p className="text-sm text-text-secondary mb-2">{recommendedTask.preview}</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
                     <span className="badge bg-background-tertiary border border-border/60">{recommendedTask.functionSignature}</span>
@@ -209,7 +209,7 @@ export default async function HomePage() {
                   </div>
                 </div>
                 <Link href={`/task/${recommendedTask.slug}`}>
-                  <Button variant="primary" size="lg">
+                  <Button variant="primary" size="lg" className="w-full sm:w-auto">
                     Решить эту задачу
                     <ArrowRight className="w-5 h-5" />
                   </Button>
@@ -221,7 +221,7 @@ export default async function HomePage() {
       )}
 
       {/* Main Content */}
-      <section className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Weekly Challenge */}
           <div className="lg:col-span-2">
