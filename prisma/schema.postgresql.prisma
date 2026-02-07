@@ -1,0 +1,211 @@
+// prisma/schema.postgresql.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  stepikUserId      Int?      @unique @map("stepik_user_id")
+  email             String?   @unique
+  passwordHash      String?   @map("password_hash")
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  displayName       String    @map("display_name")
+  nickname          String?
+  nicknameKey       String?   @unique @map("nickname_key")
+  nicknameChangedAt DateTime? @map("nickname_changed_at")
+  avatarUrl         String?   @map("avatar_url")
+  totalPoints       Int       @default(0) @map("total_points")
+  isAdmin           Boolean   @default(false) @map("is_admin")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  submissions       Submission[]
+  bestSubmissions   BestSubmission[]
+  sessions          Session[]
+  competitionEntries CompetitionEntry[]
+  submissionJobs    SubmissionJob[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Task {
+  id                String   @id @default(uuid())
+  slug              String   @unique
+  title             String
+  tier              String   @default("bronze")
+  mode              String   @default("practice")
+  statementMd       String   @map("statement_md")
+  functionSignature String   @map("function_signature")
+  functionArgs      String   @map("function_args")
+  exampleInput      String   @map("example_input")
+  exampleOutput     String   @map("example_output")
+  constraintsJson   String   @map("constraints_json")
+  status            String   @default("draft")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  testcases         Testcase[]
+  submissions       Submission[]
+  bestSubmissions   BestSubmission[]
+  weeklyChallenges  WeeklyChallenge[]
+  competitionTasks  CompetitionTask[]
+
+  @@map("tasks")
+}
+
+model Testcase {
+  id             String  @id @default(uuid())
+  taskId         String  @map("task_id")
+  inputData      String  @map("input_data")
+  expectedOutput String  @map("expected_output")
+  isHidden       Boolean @default(false) @map("is_hidden")
+  orderIndex     Int     @default(0) @map("order_index")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("testcases")
+}
+
+model Submission {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  userId      String   @map("user_id")
+  code        String
+  codeLength  Int      @map("code_length")
+  status      String   @default("pending")
+  testsPassed Int      @default(0) @map("tests_passed")
+  testsTotal  Int      @default(0) @map("tests_total")
+  runtimeMs   Int?     @map("runtime_ms")
+  errorMsg    String?  @map("error_msg")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task           Task             @relation(fields: [taskId], references: [id])
+  user           User             @relation(fields: [userId], references: [id])
+  bestSubmission BestSubmission?
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([taskId, userId])
+  @@map("submissions")
+}
+
+model BestSubmission {
+  id           String   @id @default(uuid())
+  taskId       String   @map("task_id")
+  userId       String   @map("user_id")
+  submissionId String   @unique @map("submission_id")
+  codeLength   Int      @map("code_length")
+  achievedAt   DateTime @default(now()) @map("achieved_at")
+
+  task       Task       @relation(fields: [taskId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  submission Submission @relation(fields: [submissionId], references: [id])
+
+  @@unique([taskId, userId])
+  @@index([userId])
+  @@index([taskId, codeLength, achievedAt])
+  @@map("best_submissions")
+}
+
+model WeeklyChallenge {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  startsAt  DateTime @map("starts_at")
+  endsAt    DateTime @map("ends_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@map("weekly_challenges")
+}
+
+model Competition {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  startsAt      DateTime @map("starts_at")
+  endsAt        DateTime @map("ends_at")
+  isActive      Boolean  @default(true) @map("is_active")
+  showSolutions Boolean  @default(false) @map("show_solutions")
+  resultsUrl    String?  @map("results_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tasks   CompetitionTask[]
+  entries CompetitionEntry[]
+
+  @@map("competitions")
+}
+
+model CompetitionTask {
+  id            String @id @default(uuid())
+  competitionId String @map("competition_id")
+  taskId        String @map("task_id")
+  orderIndex    Int    @default(0) @map("order_index")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  task        Task        @relation(fields: [taskId], references: [id])
+
+  @@unique([competitionId, taskId])
+  @@map("competition_tasks")
+}
+
+model CompetitionEntry {
+  id            String    @id @default(uuid())
+  competitionId String    @map("competition_id")
+  userId        String    @map("user_id")
+  totalLength   Int       @default(0) @map("total_length")
+  tasksSolved   Int       @default(0) @map("tasks_solved")
+  lastSubmitAt  DateTime? @map("last_submit_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@unique([competitionId, userId])
+  @@map("competition_entries")
+}
+
+model SubmissionJob {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  taskSlug    String    @map("task_slug")
+  dedupKey    String    @map("dedup_key")
+  payloadJson String    @map("payload_json")
+  status      String    @default("queued")
+  attempts    Int       @default(0)
+  resultJson  String?   @map("result_json")
+  errorMsg    String?   @map("error_msg")
+  startedAt   DateTime? @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, taskSlug])
+  @@index([dedupKey, status])
+  @@map("submission_jobs")
+}
