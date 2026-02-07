@@ -48,7 +48,7 @@ async function main() {
       WHERE table_schema = 'public'
     `;
 
-    const tableNames = new Set(tables.map((row) => row.table_name));
+    const tableNames = new Set(tables.map((row: { table_name: string }) => row.table_name));
     const requiredTables = [
       'users',
       'sessions',
