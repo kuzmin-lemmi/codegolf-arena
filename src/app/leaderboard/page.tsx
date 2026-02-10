@@ -6,10 +6,14 @@ import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { cn } from '@/lib/utils';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Рейтинг — Арена однострочников',
   description: 'Глобальный рейтинг участников по очкам прогресса',
+  alternates: {
+    canonical: '/leaderboard',
+  },
 };
 
 export const revalidate = 60;

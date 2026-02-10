@@ -4,10 +4,14 @@ import { prisma } from '@/lib/db';
 import { TasksPageClient } from './TasksPageClient';
 import type { TaskMode, TaskTier } from '@/types';
 import { normalizeTaskTopics } from '@/lib/task-topics';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Задачи — Арена однострочников',
   description: 'Список задач для тренировки Python однострочников. Bronze, Silver, Gold уровни сложности.',
+  alternates: {
+    canonical: '/tasks',
+  },
 };
 
 export const revalidate = 60;

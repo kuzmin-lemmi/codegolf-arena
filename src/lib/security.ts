@@ -42,7 +42,10 @@ export function validateMutationRequest(request: NextRequest): NextResponse | nu
   }
 
   if (!origin) {
-    return null;
+    return NextResponse.json(
+      { success: false, error: 'Missing origin header for mutation request' },
+      { status: 403 }
+    );
   }
 
   const normalizedOrigin = normalizeOrigin(origin);

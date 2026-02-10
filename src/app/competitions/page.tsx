@@ -6,10 +6,14 @@ import { Card, Button, TierBadge } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatDate, formatTimeRemaining } from '@/lib/utils';
 import type { TaskTier } from '@/types';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Соревнования — Арена однострочников',
   description: 'Соревнования по Python однострочникам. Реши задачи быстрее всех!',
+  alternates: {
+    canonical: '/competitions',
+  },
 };
 
 export const revalidate = 60;

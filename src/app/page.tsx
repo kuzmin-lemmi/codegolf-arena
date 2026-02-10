@@ -5,6 +5,13 @@ import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users, Mess
 import { Card, TierBadge, Button, Avatar } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatTimeRemaining } from '@/lib/utils';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export const revalidate = 60; // Revalidate every 60 seconds
 

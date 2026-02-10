@@ -62,6 +62,9 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.svg',
   },
   manifest: '/manifest.json',
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
 };
 
 export const viewport: Viewport = {

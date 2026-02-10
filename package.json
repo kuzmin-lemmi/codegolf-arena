@@ -18,8 +18,10 @@
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "db:topics:backfill": "npx tsx scripts/backfill-task-topics.ts",
     "db:tasks:import": "npx tsx scripts/import-codegolf-tasks.ts",
+    "db:tasks:cleanup": "npx tsx scripts/cleanup-duplicate-tasks.ts",
     "ops:preflight:postgres": "npx tsx scripts/preflight-postgres.ts",
-    "ops:smoke": "npx tsx scripts/smoke-check.ts"
+    "ops:smoke": "npx tsx scripts/smoke-check.ts",
+    "ops:predeploy": "bash scripts/predeploy-check.sh"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

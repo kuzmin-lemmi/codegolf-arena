@@ -23,19 +23,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: `${baseUrl}/leaderboard`,
       lastModified: new Date(),
-      changeFrequency: 'hourly',
+      changeFrequency: 'daily',
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/auth`,
+      url: `${baseUrl}/rules`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.5,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/competitions`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
     },
   ];
 
   // Динамические страницы задач
   let taskPages: MetadataRoute.Sitemap = [];
+  let competitionPages: MetadataRoute.Sitemap = [];
 
   try {
     const tasks = await prisma.task.findMany({
@@ -49,9 +56,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     }));
+
+    const competitions = await prisma.competition.findMany({
+      select: { id: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    competitionPages = competitions.map((competition) => ({
+      url: `${baseUrl}/competitions/${competition.id}`,
+      lastModified: competition.updatedAt,
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    }));
   } catch (error) {
     console.error('Error generating sitemap:', error);
   }
 
-  return [...staticPages, ...taskPages];
+  return [...staticPages, ...taskPages, ...competitionPages];
 }

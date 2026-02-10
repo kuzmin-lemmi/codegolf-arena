@@ -204,16 +204,16 @@ export function getClientIP(request: Request): string {
     if (forwarded) {
       ipCandidates.push(...forwarded.split(',').map((x) => x.trim()));
     }
+
+    const realIp = request.headers.get('x-real-ip');
+    if (realIp) ipCandidates.push(realIp.trim());
+
+    const cfIp = request.headers.get('cf-connecting-ip');
+    if (cfIp) ipCandidates.push(cfIp.trim());
+
+    const vercelIp = request.headers.get('x-vercel-forwarded-for');
+    if (vercelIp) ipCandidates.push(vercelIp.trim());
   }
-
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) ipCandidates.push(realIp.trim());
-
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp) ipCandidates.push(cfIp.trim());
-
-  const vercelIp = request.headers.get('x-vercel-forwarded-for');
-  if (vercelIp) ipCandidates.push(vercelIp.trim());
 
   const firstValid = ipCandidates.find((value) => value.length > 0 && value.length < 128);
   if (firstValid) return firstValid;

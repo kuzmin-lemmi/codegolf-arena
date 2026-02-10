@@ -31,6 +31,9 @@ export async function generateMetadata({ params }: TaskPageProps): Promise<Metad
   return {
     title: `${task.title} — Арена однострочников`,
     description,
+    alternates: {
+      canonical: `/task/${slug}`,
+    },
     openGraph: {
       title: `${task.title} — Арена однострочников`,
       description,

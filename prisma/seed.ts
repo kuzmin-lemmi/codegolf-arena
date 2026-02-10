@@ -24,8 +24,12 @@ async function main() {
   console.log('🗑️ Cleared database');
 
   // Создаём админа (email+пароль для входа)
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin12345!';
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required for seeding');
+  }
   const passwordHash = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.user.create({
     data: {

@@ -5,10 +5,14 @@ import {
   BookOpen, Code2, Trophy, Users, AlertTriangle, 
   CheckCircle, XCircle, Zap, Clock 
 } from 'lucide-react';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Правила — Арена однострочников',
   description: 'Правила игры и правила сообщества на Арене однострочников',
+  alternates: {
+    canonical: '/rules',
+  },
 };
 
 export default function RulesPage() {

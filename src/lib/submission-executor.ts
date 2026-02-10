@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { calculateCodeLength, validateOneliner } from '@/lib/utils';
 import { executeCode } from '@/lib/piston';
@@ -86,6 +88,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
   }
 
   const startTime = Date.now();
+  const marker = randomBytes(16).toString('hex');
   const batchTestcases = task.testcases.map((testcase) => {
     const inputData = JSON.parse(testcase.inputData);
     return {
@@ -100,7 +103,8 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
     code,
     functionArgs,
     batchTestcases,
-    constraints.allowed_imports || []
+    constraints.allowed_imports || [],
+    marker
   );
 
   const runTimeout = Math.min(
@@ -117,7 +121,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
   let status: 'pass' | 'fail' | 'error' = 'fail';
   let submissionError: string | null = null;
 
-  const parsedResults = parseBatchResults(result.output);
+  const parsedResults = parseBatchResults(result.output, marker);
   const testResults = parsedResults.map((item) => {
     const source = batchTestcases.find((t) => t.index === item.index);
     const input = source?.isHidden ? undefined : (source?.args || []).map(toPythonLiteral).join(', ');
@@ -173,6 +177,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
     let txPointsEarned = 0;
     const txPointsBreakdown: string[] = [];
     let txPlace: number | null = null;
+    let awardedFirstPassPoints = false;
 
     if (status === 'pass') {
       const existingBest = await tx.bestSubmission.findUnique({
@@ -182,30 +187,65 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
             userId,
           },
         },
+        select: {
+          codeLength: true,
+        },
       });
 
-      if (!existingBest || codeLength < existingBest.codeLength) {
-        await tx.bestSubmission.upsert({
+      let currentBestLength: number | null = existingBest?.codeLength ?? null;
+
+      if (currentBestLength === null) {
+        try {
+          await tx.bestSubmission.create({
+            data: {
+              taskId: task.id,
+              userId,
+              submissionId: submission.id,
+              codeLength,
+              achievedAt: new Date(),
+            },
+          });
+
+          currentBestLength = codeLength;
+          txIsNewBest = true;
+          awardedFirstPassPoints = true;
+        } catch (error) {
+          if (
+            !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+            error.code !== 'P2002'
+          ) {
+            throw error;
+          }
+
+          const racedBest = await tx.bestSubmission.findUnique({
+            where: {
+              taskId_userId: {
+                taskId: task.id,
+                userId,
+              },
+            },
+            select: {
+              codeLength: true,
+            },
+          });
+          currentBestLength = racedBest?.codeLength ?? null;
+        }
+      }
+
+      if (currentBestLength !== null && codeLength < currentBestLength) {
+        await tx.bestSubmission.update({
           where: {
             taskId_userId: {
               taskId: task.id,
               userId,
             },
           },
-          update: {
-            submissionId: submission.id,
-            codeLength,
-            achievedAt: new Date(),
-          },
-          create: {
-            taskId: task.id,
-            userId,
+          data: {
             submissionId: submission.id,
             codeLength,
             achievedAt: new Date(),
           },
         });
-
         txIsNewBest = true;
       }
 
@@ -227,7 +267,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       const rawPlace = ranks?.[0]?.place;
       txPlace = rawPlace === undefined || rawPlace === null ? null : Number(rawPlace);
 
-      if (!existingBest) {
+      if (awardedFirstPassPoints) {
         txPointsEarned = getPassPoints(task.tier as TaskTier);
         txPointsBreakdown.push(`PASS (${task.tier}): +${txPointsEarned}`);
 
@@ -275,11 +315,11 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
   };
 }
 
-function parseBatchResults(output: string): BatchExecutionResultItem[] {
-  const startMarker = '__ARENA_JSON_START__';
-  const endMarker = '__ARENA_JSON_END__';
+function parseBatchResults(output: string, marker: string): BatchExecutionResultItem[] {
+  const startMarker = `__ARENA_${marker}_START__`;
+  const endMarker = `__ARENA_${marker}_END__`;
   const start = output.indexOf(startMarker);
-  const end = output.indexOf(endMarker);
+  const end = output.lastIndexOf(endMarker);
 
   if (start === -1 || end === -1 || end <= start) {
     return [];

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, hashToken } from '@/lib/auth';
 import { validateMutationRequest } from '@/lib/security';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -61,6 +61,24 @@ export async function POST(request: NextRequest) {
     await prisma.user.update({
       where: { id: currentUser.id },
       data: { passwordHash: nextHash },
+    });
+
+    const sessionToken = request.cookies.get('arena_session')?.value;
+    const hashedCurrent = sessionToken ? hashToken(sessionToken) : null;
+
+    await prisma.session.deleteMany({
+      where: {
+        userId: currentUser.id,
+        ...(hashedCurrent
+          ? {
+              NOT: {
+                token: {
+                  in: [hashedCurrent, sessionToken || ''],
+                },
+              },
+            }
+          : {}),
+      },
     });
 
     return NextResponse.json({ success: true });

@@ -48,6 +48,40 @@ export function toPythonLiteral(value: unknown): string {
   return String(value);
 }
 
+function buildAstSecurityPrelude(userCode: string): string {
+  const sourceLiteral = toPythonLiteral(userCode);
+
+  return `import ast
+
+_arena_source = ${sourceLiteral}
+_arena_blocked_names = {
+    "__import__", "eval", "exec", "compile", "open", "input", "breakpoint", "help",
+    "globals", "locals", "vars", "dir", "getattr", "setattr", "delattr", "__builtins__"
+}
+_arena_blocked_calls = {
+    "__import__", "eval", "exec", "compile", "open", "input", "breakpoint", "help",
+    "globals", "locals", "vars", "dir", "getattr", "setattr", "delattr"
+}
+
+def _arena_validate_ast(expr: str) -> None:
+    tree = ast.parse(expr, mode="eval")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            if node.id in _arena_blocked_names:
+                raise ValueError(f"Blocked name: {node.id}")
+            if node.id.startswith("__") and node.id.endswith("__"):
+                raise ValueError(f"Blocked dunder name: {node.id}")
+        elif isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                raise ValueError(f"Blocked dunder attribute: {node.attr}")
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in _arena_blocked_calls:
+                raise ValueError(f"Blocked call: {node.func.id}")
+
+_arena_validate_ast(_arena_source)
+`;
+}
+
 /**
  * Генерирует полный Python код для выполнения теста
  */
@@ -61,6 +95,7 @@ export function generateTestCode(
   const imports = allowedImports.length > 0
     ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
     : '';
+  const astSecurityPrelude = buildAstSecurityPrelude(userCode);
 
   // Аргументы функции
   const argsStr = functionArgs.join(', ');
@@ -68,7 +103,9 @@ export function generateTestCode(
   // Тестовые аргументы в Python формате
   const testArgsStr = testArgs.map(toPythonLiteral).join(', ');
 
-  return `${imports}def solution(${argsStr}):
+  return `${imports}${astSecurityPrelude}
+
+def solution(${argsStr}):
     return ${userCode}
 
 print(solution(${testArgsStr}))
@@ -83,13 +120,15 @@ interface BatchTestcaseInput {
 }
 
 /**
- * Генерирует Python код для прогона всех тестов за один запуск
+ * Генерирует Python код для прогона всех тестов за один запуск.
+ * marker — уникальный секретный маркер для защиты от подделки вывода пользователем.
  */
 export function generateBatchTestCode(
   userCode: string,
   functionArgs: string[],
   testcases: BatchTestcaseInput[],
-  allowedImports: string[] = []
+  allowedImports: string[] = [],
+  marker?: string
 ): string {
   const imports = allowedImports.length > 0
     ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
@@ -103,7 +142,14 @@ export function generateBatchTestCode(
     })
     .join(',\n    ');
 
+  // Используем переданный маркер или fallback (для обратной совместимости с Pyodide)
+  const startMarker = marker ? `__ARENA_${marker}_START__` : '__ARENA_JSON_START__';
+  const endMarker = marker ? `__ARENA_${marker}_END__` : '__ARENA_JSON_END__';
+  const astSecurityPrelude = buildAstSecurityPrelude(userCode);
+
   return `${imports}import json
+
+${astSecurityPrelude}
 
 def solution(${argsStr}):
     return ${userCode}
@@ -138,9 +184,9 @@ for test in tests:
         })
 
 payload = {"results": results}
-print("__ARENA_JSON_START__")
+print("${startMarker}")
 print(json.dumps(payload, ensure_ascii=False))
-print("__ARENA_JSON_END__")
+print("${endMarker}")
 `;
 }
 

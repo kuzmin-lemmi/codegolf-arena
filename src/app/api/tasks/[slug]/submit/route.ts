@@ -54,7 +54,11 @@ export async function GET(
     }
 
     if (job.status === 'failed') {
-      return NextResponse.json({ success: true, status: 'failed', error: job.error || 'Submission failed' });
+      return NextResponse.json({
+        success: true,
+        status: 'failed',
+        error: job.error || 'Submission failed',
+      });
     }
 
     return NextResponse.json({ success: true, status: job.status });
@@ -91,6 +95,21 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: 'Войдите, чтобы отправить решение в рейтинг' },
         { status: 401 }
+      );
+    }
+
+    const userStatus = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      select: { email: true, emailVerified: true },
+    });
+
+    if (userStatus?.email && !userStatus.emailVerified) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Подтвердите email перед отправкой решений в рейтинг',
+        },
+        { status: 403 }
       );
     }
 

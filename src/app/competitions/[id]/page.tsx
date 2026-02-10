@@ -26,6 +26,9 @@ export async function generateMetadata({ params }: Props) {
 
   return {
     title: `${competition.title} — Арена однострочников`,
+    alternates: {
+      canonical: `/competitions/${id}`,
+    },
   };
 }
 
