@@ -121,15 +121,15 @@ export default async function LeaderboardPage() {
               )}
 
               {/* Full Table */}
-              <Card padding="none">
+              <Card padding="none" className="border-accent-blue/20">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-border text-left text-sm text-text-secondary">
-                        <th className="px-4 py-3 font-medium w-16">Место</th>
-                        <th className="px-4 py-3 font-medium">Участник</th>
-                        <th className="px-4 py-3 font-medium text-right">Очки</th>
-                        <th className="px-4 py-3 font-medium text-right hidden sm:table-cell">Задач</th>
+                      <tr className="border-b border-border text-left text-sm text-text-secondary font-mono uppercase">
+                        <th className="px-4 py-3 font-medium w-16">#</th>
+                        <th className="px-4 py-3 font-medium">УЧАСТНИК</th>
+                        <th className="px-4 py-3 font-medium text-right">ОЧКИ</th>
+                        <th className="px-4 py-3 font-medium text-right hidden sm:table-cell">ЗАДАЧ</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -148,7 +148,7 @@ export default async function LeaderboardPage() {
                                 name={entry.nickname}
                                 size="sm"
                               />
-                              <span className="font-medium">{entry.nickname}</span>
+                              <span className="font-mono text-text-primary">{entry.nickname}</span>
                             </div>
                           </td>
                           <td className="px-4 py-4 text-right">
@@ -156,7 +156,7 @@ export default async function LeaderboardPage() {
                               {entry.points}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-right text-text-secondary hidden sm:table-cell">
+                          <td className="px-4 py-4 text-right text-text-secondary hidden sm:table-cell font-mono">
                             {entry.tasksSolved}
                           </td>
                         </tr>
@@ -170,24 +170,25 @@ export default async function LeaderboardPage() {
             {/* Sidebar - Info */}
             <div className="space-y-6">
               {/* How points work */}
-              <Card padding="lg">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Card padding="lg" className="border-accent-blue/20">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-accent-green drop-shadow-[0_0_5px_rgba(57,255,20,0.3)]">
                   <TrendingUp className="w-5 h-5 text-accent-green" />
-                  Как начисляются очки
+                  КАК НАЧИСЛЯЮТСЯ ОЧКИ
                 </h3>
-                <div className="space-y-4 text-sm">
-                  <PointRule label="Решение Bronze задачи" points="+10" />
-                  <PointRule label="Решение Silver задачи" points="+20" />
-                  <PointRule label="Решение Gold задачи" points="+30" />
-                  <hr className="border-border" />
-                  <PointRule label="Улучшение на 1-3 символа" points="+5" />
-                  <PointRule label="Улучшение на 4-9 символов" points="+10" />
-                  <PointRule label="Улучшение на 10+ символов" points="+20" />
-                  <hr className="border-border" />
-                  <PointRule label="Стал #1 по задаче" points="+25" highlight />
+                <div className="space-y-2 text-sm">
+                  <PointRule label="РЕШЕНИЕ BRONZE ЗАДАЧИ" points="+10" />
+                  <PointRule label="РЕШЕНИЕ SILVER ЗАДАЧИ" points="+20" />
+                  <PointRule label="РЕШЕНИЕ GOLD ЗАДАЧИ" points="+30" />
+                  <hr className="border-border/50 my-2" />
+                  <PointRule label="УЛУЧШЕНИЕ НА 1-3 СИМВОЛА" points="+5" />
+                  <PointRule label="УЛУЧШЕНИЕ НА 4-9 СИМВОЛОВ" points="+10" />
+                  <PointRule label="УЛУЧШЕНИЕ НА 10+ СИМВОЛОВ" points="+20" />
+                  <hr className="border-border/50 my-2" />
+                  <PointRule label="СТАЛ #1 ПО ЗАДАЧЕ" points="+25" highlight />
                 </div>
               </Card>
             </div>
+
           </div>
         )}
       </div>
@@ -200,62 +201,82 @@ function PodiumCard({
   nickname,
   points,
   avatar,
+  progress,
 }: {
   rank: number;
   nickname: string;
   points: number;
   avatar: string | null;
+  progress?: number;
 }) {
   const colors = {
-    1: 'from-tier-gold/30 to-tier-gold/10 border-tier-gold/50',
-    2: 'from-tier-silver/30 to-tier-silver/10 border-tier-silver/50',
-    3: 'from-tier-bronze/30 to-tier-bronze/10 border-tier-bronze/50',
+    1: 'from-tier-gold/30 to-tier-gold/10 border-tier-gold/50 shadow-[0_0_30px_rgba(255,215,0,0.2)]',
+    2: 'from-tier-silver/30 to-tier-silver/10 border-tier-silver/50 shadow-[0_0_30px_rgba(192,192,192,0.1)]',
+    3: 'from-tier-bronze/30 to-tier-bronze/10 border-tier-bronze/50 shadow-[0_0_30px_rgba(205,127,50,0.1)]',
   };
 
   return (
     <Card
       padding="md"
       className={cn(
-        'text-center bg-gradient-to-b border',
+        'text-center bg-gradient-to-b border rounded-none relative overflow-hidden',
         colors[rank as 1 | 2 | 3]
       )}
     >
+      {progress !== undefined && progress < 100 && (
+        <div className="absolute bottom-0 left-0 h-1 bg-accent-blue/50" style={{ width: `${progress}%` }} />
+      )}
       <div className="mb-2">
         <RankDisplay rank={rank} size="lg" />
       </div>
       <Avatar src={avatar} name={nickname} size="md" className="mx-auto mb-2" />
-      <div className="font-semibold truncate">{nickname}</div>
-      <div className="text-accent-blue font-mono font-bold">{points}</div>
+      <div className="font-semibold truncate text-text-primary">{nickname}</div>
+      <div className="text-accent-blue font-mono font-bold text-xl">{points} очков</div>
     </Card>
   );
 }
 
-function RankDisplay({ rank, size = 'md' }: { rank: number; size?: 'md' | 'lg' }) {
+function RankDisplay({
+  rank,
+  size = 'md',
+}: {
+  rank: number;
+  size?: 'md' | 'lg';
+}) {
   const sizeClasses = size === 'lg' ? 'w-10 h-10 text-lg' : 'w-8 h-8 text-sm';
 
   if (rank === 1) {
     return (
-      <div className={cn('rounded-full bg-tier-gold/20 text-tier-gold font-bold flex items-center justify-center mx-auto', sizeClasses)}>
+      <div className={cn(
+        'rounded-none bg-tier-gold/20 text-tier-gold font-bold flex items-center justify-center mx-auto border border-tier-gold/40 shadow-[0_0_10px_rgba(255,215,0,0.2)]',
+        sizeClasses
+      )}>
         <Medal className={size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'} />
       </div>
     );
   }
   if (rank === 2) {
     return (
-      <div className={cn('rounded-full bg-tier-silver/20 text-tier-silver font-bold flex items-center justify-center mx-auto', sizeClasses)}>
+      <div className={cn(
+        'rounded-none bg-tier-silver/20 text-tier-silver font-bold flex items-center justify-center mx-auto border border-tier-silver/40 shadow-[0_0_10px_rgba(192,192,192,0.1)]',
+        sizeClasses
+      )}>
         2
       </div>
     );
   }
   if (rank === 3) {
     return (
-      <div className={cn('rounded-full bg-tier-bronze/20 text-tier-bronze font-bold flex items-center justify-center mx-auto', sizeClasses)}>
+      <div className={cn(
+        'rounded-none bg-tier-bronze/20 text-tier-bronze font-bold flex items-center justify-center mx-auto border border-tier-bronze/40 shadow-[0_0_10px_rgba(205,127,50,0.1)]',
+        sizeClasses
+      )}>
         3
       </div>
     );
   }
   return (
-    <div className={cn('text-text-secondary font-medium flex items-center justify-center', sizeClasses)}>
+    <div className={cn('text-text-secondary font-mono flex items-center justify-center', sizeClasses)}>
       {rank}
     </div>
   );
@@ -271,11 +292,12 @@ function PointRule({
   highlight?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-text-secondary">{label}</span>
-      <span className={cn('font-mono font-bold', highlight ? 'text-tier-gold' : 'text-accent-green')}>
+    <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+      <span className="text-text-secondary font-mono text-sm">{label}</span>
+      <span className={cn('font-mono font-bold text-sm', highlight ? 'text-tier-gold drop-shadow-[0_0_5px_rgba(255,215,0,0.4)]' : 'text-accent-green')}>
         {points}
       </span>
     </div>
   );
 }
+

@@ -57,67 +57,67 @@ export function TaskPageClient({
 
   return (
     <div className="space-y-6">
-      <Card padding="lg">
-        <h2 className="text-base sm:text-lg font-semibold mb-4">Твоё решение</h2>
-        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary space-y-2">
+      <Card padding="lg" className="border-accent-blue/20">
+        <h2 className="text-xl font-bold mb-4 text-accent-blue drop-shadow-[0_0_8px_rgba(0,242,255,0.3)] font-mono uppercase">ТВОЁ РЕШЕНИЕ</h2>
+        <div className="mb-4 rounded-none border border-border bg-background-tertiary/50 px-4 py-3 text-sm text-text-secondary space-y-2 font-mono">
           {bestLength !== null ? (
             <>
-              Текущий лучший результат: <span className="font-mono text-accent-green font-semibold">{bestLength}</span>
+              <span className="text-text-muted">// ТЕКУЩИЙ ЛУЧШИЙ:</span> <span className="font-bold text-accent-green drop-shadow-[0_0_5px_rgba(0,255,255,0.4)]">{bestLength}</span> СИМВОЛОВ
               {top3Target !== null && (
                 <span>
-                  {' '}• цель для топ-3:{' '}
-                  <span className="font-mono text-accent-blue font-semibold">{top3Target}</span>
+                  {' '}<span className="text-text-muted">• ЦЕЛЬ ТОП-3:</span>{' '}
+                  <span className="font-bold text-accent-blue">{top3Target}</span> СИМВОЛОВ
                 </span>
               )}
             </>
           ) : (
             <>
-              Пока нет решений в рейтинге — стань первым и задай планку для остальных.
+              <span className="text-text-muted">// ПОКА НЕТ РЕШЕНИЙ В РЕЙТИНГЕ — СТАНЬ ПЕРВЫМ И ЗАДАЙ ПЛАНКУ ДЛЯ ОСТАЛЬНЫХ.</span>
             </>
           )}
           {editorLength !== null && (
-            <div className="text-xs space-y-2">
+            <div className="text-xs space-y-2 pt-2 border-t border-border/50 mt-2">
               {toTop1 !== null && (
                 <div>
                   {toTop1 > 0 ? (
-                    <>До топ-1: <span className="font-mono text-accent-blue font-semibold">-{toTop1}</span> символов</>
+                    <>ДО ТОП-1: <span className="text-accent-red font-bold">-{toTop1}</span> СИМВОЛОВ</>
                   ) : toTop1 === 0 ? (
-                    <>Ты уже на уровне текущего топ-1.</>
+                    <><span className="text-accent-green font-bold">// ТЫ УЖЕ НА УРОВНЕ ТЕКУЩЕГО ТОП-1.</span></>
                   ) : (
-                    <>Ты уже короче текущего топ-1 на <span className="font-mono text-accent-green font-semibold">{Math.abs(toTop1)}</span> символов.</>
+                    <><span className="text-accent-green font-bold">// ТЫ УЖЕ КОРОЧЕ ТЕКУЩЕГО ТОП-1 НА {Math.abs(toTop1)} СИМВОЛОВ.</span></>
                   )}
                 </div>
               )}
               {toTop3 !== null && (
                 <div>
                   {toTop3 > 0 ? (
-                    <>До топ-3: <span className="font-mono text-accent-blue font-semibold">-{toTop3}</span></>
+                    <>ДО ТОП-3: <span className="text-accent-red font-bold">-{toTop3}</span> СИМВОЛОВ</>
                   ) : (
-                    <>Текущая длина уже тянет на топ-3.</>
+                    <><span className="text-accent-green font-bold">// ТЕКУЩАЯ ДЛИНА УЖЕ ТЯНЕТ НА ТОП-3.</span></>
                   )}
                 </div>
               )}
               {(top1Progress !== null || top3Progress !== null) && (
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 pt-3 border-t border-border/50 mt-3">
                   {top1Progress !== null && (
-                    <div className="rounded-md border border-border/70 px-2 py-1.5 bg-background/40">
-                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1">
-                        <span>Прогресс к топ-1</span>
-                        <span>{top1Progress}%</span>
+                    <div className="rounded-none border border-accent-blue/30 px-3 py-2 bg-background-tertiary/30">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1 font-mono">
+                        <span>ПРОГРЕСС К ТОП-1</span>
+                        <span className="text-accent-blue">{top1Progress}%</span>
                       </div>
-                      <div className="h-1.5 rounded bg-background-tertiary overflow-hidden">
-                        <div className="h-full rounded bg-accent-green" style={{ width: `${top1Progress}%` }} />
+                      <div className="h-1.5 rounded-none bg-background-secondary overflow-hidden">
+                        <div className="h-full rounded-none bg-accent-green animate-pulse-subtle" style={{ width: `${top1Progress}%` }} />
                       </div>
                     </div>
                   )}
                   {top3Progress !== null && (
-                    <div className="rounded-md border border-border/70 px-2 py-1.5 bg-background/40">
-                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1">
-                        <span>Прогресс к топ-3</span>
-                        <span>{top3Progress}%</span>
+                    <div className="rounded-none border border-accent-blue/30 px-3 py-2 bg-background-tertiary/30">
+                      <div className="flex items-center justify-between text-[11px] text-text-muted mb-1 font-mono">
+                        <span>ПРОГРЕСС К ТОП-3</span>
+                        <span className="text-accent-blue">{top3Progress}%</span>
                       </div>
-                      <div className="h-1.5 rounded bg-background-tertiary overflow-hidden">
-                        <div className="h-full rounded bg-accent-blue" style={{ width: `${top3Progress}%` }} />
+                      <div className="h-1.5 rounded-none bg-background-secondary overflow-hidden">
+                        <div className="h-full rounded-none bg-accent-blue animate-pulse-subtle" style={{ width: `${top3Progress}%` }} />
                       </div>
                     </div>
                   )}

@@ -20,59 +20,60 @@ export function TaskStatement({ task }: TaskStatementProps) {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-2xl font-bold">{task.title}</h1>
-          <TierBadge tier={task.tier} />
+          <h1 className="text-3xl font-bold text-text-primary drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] font-mono uppercase">{task.title}</h1>
+          <TierBadge tier={task.tier} className="rounded-none border-accent-blue/30" />
         </div>
         {task.mode === 'tournament' && (
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-accent-yellow/20 text-accent-yellow rounded text-xs font-medium">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-accent-yellow/20 text-accent-yellow rounded-none text-xs font-mono border border-accent-yellow/40">
             <Clock className="w-3 h-3" />
-            Задача недели
+            ТУРНИР НЕДЕЛИ
           </span>
         )}
       </div>
 
       {/* Statement */}
-      <div className="prose prose-invert max-w-none">
-        <div className="text-text-primary whitespace-pre-wrap leading-relaxed">
-          {task.statementMd}
-        </div>
-      </div>
+       <div className="prose prose-invert max-w-none text-text-secondary font-mono leading-relaxed">
+         <div className="whitespace-pre-wrap">
+           {task.statementMd}
+         </div>
+       </div>
 
-      {/* Function signature */}
-      <div className="p-4 bg-background-tertiary rounded-lg border border-border">
-        <div className="flex items-center gap-2 text-sm text-text-secondary mb-2">
-          <FileCode2 className="w-4 h-4" />
-          <span>Сигнатура функции</span>
-        </div>
-        <code className="text-accent-blue font-mono text-lg">
-          {task.functionSignature}
-        </code>
-      </div>
+       {/* Function signature */}
+       <div className="p-4 bg-background-tertiary/50 rounded-none border border-accent-blue/20">
+         <div className="flex items-center gap-2 text-sm text-text-muted mb-2 font-mono uppercase">
+           <FileCode2 className="w-4 h-4 text-accent-blue" />
+           <span>// СИГНАТУРА ФУНКЦИИ</span>
+         </div>
+         <code className="text-accent-blue font-mono text-lg break-all drop-shadow-[0_0_5px_rgba(0,242,255,0.3)]">
+           {task.functionSignature}
+         </code>
+       </div>
 
-      {/* Examples */}
-      {task.exampleInput && task.exampleOutput && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-            Примеры
-          </h3>
-          <div className="grid gap-3">
-            <ExampleBlock
-              label="Ввод"
-              value={task.exampleInput}
-            />
-            <ExampleBlock
-              label="Вывод"
-              value={task.exampleOutput}
-            />
-          </div>
-        </div>
-      )}
+       {/* Examples */}
+       {task.exampleInput && task.exampleOutput && (
+         <div className="space-y-3">
+           <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide font-mono">
+             // ПРИМЕРЫ
+           </h3>
+           <div className="grid gap-3">
+             <ExampleBlock
+               label="ВВОД"
+               value={task.exampleInput}
+             />
+             <ExampleBlock
+               label="ВЫВОД"
+               value={task.exampleOutput}
+             />
+           </div>
+         </div>
+       )}
 
-      {/* Constraints */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide">
-          Ограничения
-        </h3>
+       {/* Constraints */}
+       <div className="space-y-3">
+         <h3 className="text-sm font-medium text-text-secondary uppercase tracking-wide font-mono">
+           // ОГРАНИЧЕНИЯ
+         </h3>
+
         <div className="flex flex-wrap gap-2">
           <ConstraintPill icon="✓" color="green">
             1 строка

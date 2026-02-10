@@ -175,13 +175,13 @@ export default async function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link href="/tasks">
-                <Button variant="primary" size="lg" className="w-full sm:w-auto">
+                <Button variant="primary" size="lg" className="w-full sm:w-auto neon-button">
                   Начать решать
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
               <Link href="/leaderboard">
-                <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                <Button variant="secondary" size="lg" className="w-full sm:w-auto neon-button-secondary">
                   <Trophy className="w-5 h-5" />
                   Рейтинг
                 </Button>
@@ -193,8 +193,8 @@ export default async function HomePage() {
                 </Button>
               </a>
             </div>
-            <p className="mt-4 text-sm text-text-secondary">
-              Локальная проверка для скорости, полный набор тестов проверяется при отправке в рейтинг.
+            <p className="mt-8 text-sm text-text-muted font-mono animate-pulse-subtle">
+              // СТАТУС: СИСТЕМА ФУНКЦИОНИРУЕТ В ШТАТНОМ РЕЖИМЕ. ОЖИДАЮТСЯ ВХОДНЫЕ ДАННЫЕ.
             </p>
           </div>
         </div>
@@ -206,21 +206,25 @@ export default async function HomePage() {
             <Card padding="lg" className="border-accent-blue/25 bg-accent-blue/5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-accent-blue mb-1">Рекомендуемая первая задача</div>
-                  <h2 className="text-lg sm:text-xl font-semibold mb-1">{recommendedTask.title}</h2>
-                  <p className="text-sm text-text-secondary mb-2">{recommendedTask.preview}</p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                    <span className="badge bg-background-tertiary border border-border/60">{recommendedTask.functionSignature}</span>
-                    <span>Участников: {recommendedTask.participants}</span>
-                    <span>• Подходит для первого сабмита</span>
-                  </div>
-                </div>
-                <Link href={`/task/${recommendedTask.slug}`}>
-                  <Button variant="primary" size="lg" className="w-full sm:w-auto">
-                    Решить эту задачу
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
+              <h2 className="text-xl font-bold mb-2 text-accent-blue">
+                <Code2 className="inline-block w-6 h-6 mr-2 -mt-1" />
+                Рекомендуемая задача
+              </h2>
+              <p className="text-sm text-text-secondary mb-3 font-mono border-l-2 border-accent-blue pl-2">
+                {recommendedTask.preview}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted mb-4">
+                <span className="badge badge-bronze">{recommendedTask.functionSignature}</span>
+                <span className="font-mono text-accent-blue/80">// {recommendedTask.participants} решений</span>
+              </div>
+            </div>
+            <Link href={`/task/${recommendedTask.slug}`}>
+              <Button variant="primary" size="lg" className="w-full sm:w-auto neon-button">
+                РЕШИТЬ
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+
               </div>
             </Card>
           </div>
@@ -231,7 +235,8 @@ export default async function HomePage() {
       <section className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Weekly Challenge */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 relative">
+            <div className="absolute inset-0 bg-accent-blue/10 blur-3xl opacity-20 animate-pulse-light z-0"></div>
             {weeklyChallenge ? (
               <WeeklyChallengeCard challenge={weeklyChallenge} />
             ) : (

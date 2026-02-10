@@ -145,10 +145,10 @@ export default async function TaskPage({ params }: TaskPageProps) {
         <div className="container mx-auto px-4 py-3">
           <Link
             href="/tasks"
-            className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-accent-blue hover:text-white transition-colors font-mono uppercase"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Назад к задачам
+            <ArrowLeft className="w-4 h-4 text-accent-blue" />
+            НАЗАД К ЗАДАЧАМ
           </Link>
         </div>
       </div>

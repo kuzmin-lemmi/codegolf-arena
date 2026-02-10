@@ -495,37 +495,39 @@ function NextStepCard({
     : null;
 
   return (
-    <div className="p-4 rounded-lg border border-accent-blue/30 bg-accent-blue/5 animate-fade-in">
-      <div className="font-semibold text-accent-blue mb-2">Следующий шаг</div>
-      <div className="space-y-1 text-sm text-text-secondary">
+    <div className="p-4 rounded-none border border-accent-blue/30 bg-accent-blue/5 animate-fade-in relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/5 to-transparent animate-[shimmer_3s_infinite_reverse]"></div>
+      <div className="font-semibold text-accent-blue mb-2 font-mono uppercase z-10 relative">// СЛЕДУЮЩИЙ ШАГ</div>
+      <div className="space-y-1 text-sm text-text-secondary font-mono z-10 relative">
         {toTop1 !== null && toTop1 > 0 && (
-          <div>До топ-1 по этой задаче: <span className="font-mono text-text-primary">-{toTop1}</span> символов.</div>
+          <div>// ДО ТОП-1 ПО ЭТОЙ ЗАДАЧЕ: <span className="font-bold text-accent-red">-{toTop1}</span> СИМВОЛОВ.</div>
         )}
         {toTop3 !== null && toTop3 > 0 && (
-          <div>До топ-3: <span className="font-mono text-text-primary">-{toTop3}</span> символов.</div>
+          <div>// ДО ТОП-3: <span className="font-bold text-accent-red">-{toTop3}</span> СИМВОЛОВ.</div>
         )}
         {(toTop1 === null || toTop1 <= 0) && (toTop3 === null || toTop3 <= 0) && (
-          <div>Отличный результат! Попробуй ещё укоротить решение или перейти к следующей задаче.</div>
+          <div>// ОТЛИЧНЫЙ РЕЗУЛЬТАТ! МОЖЕШЬ ЕЩЕ УКОРОТИТЬ ИЛИ ПЕРЕЙТИ К ДРУГОЙ ЗАДАЧЕ.</div>
         )}
         {taskTitle && (
-          <div className="text-xs text-text-muted">Задача: {taskTitle}</div>
+          <div className="text-xs text-text-muted mt-2">// ТЕКУЩАЯ ЗАДАЧА: <span className="text-accent-blue">{taskTitle.toUpperCase()}</span></div>
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2 z-10 relative">
         {nextTask ? (
           <Link href={`/task/${nextTask.slug}`}>
-            <Button variant="primary" size="sm">Дальше: {nextTask.title}</Button>
+            <Button variant="primary" size="sm" className="neon-button">ДАЛЬШЕ: {nextTask.title.toUpperCase()}</Button>
           </Link>
         ) : (
           <Link href="/tasks">
-            <Button variant="secondary" size="sm">К списку задач</Button>
+            <Button variant="secondary" size="sm" className="neon-button-secondary">К СПИСКУ ЗАДАЧ</Button>
           </Link>
         )}
       </div>
     </div>
   );
 }
+
 
 function FailureHints({ details, errorMessage }: { details: TestResultDetail[]; errorMessage?: string }) {
   const combinedText = [
@@ -536,32 +538,32 @@ function FailureHints({ details, errorMessage }: { details: TestResultDetail[]; 
   const hints: string[] = [];
 
   if (combinedText.includes('time limit') || combinedText.includes('timeout')) {
-    hints.push('Упрости алгоритм: избегай лишних циклов и повторных вычислений в выражении.');
+    hints.push('// ОПТИМИЗИРУЙ АЛГОРИТМ: ИЗБЕГАЙ ЛИШНИХ ЦИКЛОВ И ПОВТОРНЫХ ВЫЧИСЛЕНИЙ.');
   }
   if (combinedText.includes('output limit')) {
-    hints.push('Убери отладочный вывод: лишний print быстро переполняет лимит вывода.');
+    hints.push('// УБЕРИ ОТЛАДОЧНЫЙ ВЫВОД: ЛИШНИЙ PRINT ПЕРЕПОЛНЯЕТ ЛИМИТ.');
   }
   if (combinedText.includes('syntaxerror') || combinedText.includes('indentationerror')) {
-    hints.push('Проверь синтаксис однострочника: лишние скобки, двоеточия и запятые.');
+    hints.push('// ПРОВЕРЬ СИНТАКСИС ОДНОСТРОЧНИКА: ЛИШНИЕ СКОБКИ, ДВОЕТОЧИЯ, ЗАПЯТЫЕ.');
   }
   if (combinedText.includes('nameerror') || combinedText.includes('not defined')) {
-    hints.push('Похоже на отсутствующее имя/импорт. Проверь разрешенные импорты и названия переменных.');
+    hints.push('// ОТСУТСТВУЕТ ИМЯ/ИМПОРТ. ПРОВЕРЬ РАЗРЕШЕННЫЕ ИМПОРТЫ И ПЕРЕМЕННЫЕ.');
   }
   if (combinedText.includes('typeerror') || combinedText.includes('valueerror')) {
-    hints.push('Проверь типы и граничные случаи: пустые массивы, нули, отрицательные значения.');
+    hints.push('// ПРОВЕРЬ ТИПЫ И ГРАНИЧНЫЕ СЛУЧАИ: ПУСТЫЕ МАССИВЫ, НУЛИ, ОТРИЦАТЕЛЬНЫЕ.');
   }
   if (combinedText.includes('assert') || details.some((d) => !d.passed && d.expected && d.actual)) {
-    hints.push('Есть расхождение ожидаемого и фактического значения — проверь порядок операций и округление.');
+    hints.push('// РАСХОЖДЕНИЕ ОЖИДАЕМОГО/ФАКТИЧЕСКОГО. ПРОВЕРЬ ПОРЯДОК И ОКРУГЛЕНИЕ.');
   }
 
   if (hints.length === 0) {
-    hints.push('Сначала прогони локальные открытые тесты и отдельно проверь граничные случаи.');
-    hints.push('Частые проблемы: пустой ввод, большие числа, float-округление, запретные токены.');
+    hints.push('// СНАЧАЛА ПРОГОНИ ЛОКАЛЬНЫЕ ОТКРЫТЫЕ ТЕСТЫ И ГРАНИЧНЫЕ СЛУЧАИ.');
+    hints.push('// ЧАСТЫЕ ПРОБЛЕМЫ: ПУСТОЙ ВВОД, БОЛЬШИЕ ЧИСЛА, FLOAT-ОКРУГЛЕНИЕ, ЗАПРЕТНЫЕ ТОКЕНЫ.');
   }
 
   return (
-    <div className="p-4 rounded-lg border border-accent-yellow/30 bg-accent-yellow/5 animate-fade-in">
-      <div className="font-semibold text-accent-yellow mb-2">Подсказки по частым фейлам</div>
+    <div className="p-4 rounded-none border border-accent-red/40 bg-accent-red/5 animate-fade-in font-mono">
+      <div className="font-bold text-accent-red mb-2 uppercase drop-shadow-[0_0_5px_rgba(255,0,85,0.4)]">// ОШИБКА ВЫПОЛНЕНИЯ</div>
       <div className="space-y-1 text-sm text-text-secondary">
         {hints.slice(0, 3).map((hint) => (
           <div key={hint}>• {hint}</div>
@@ -571,6 +573,7 @@ function FailureHints({ details, errorMessage }: { details: TestResultDetail[]; 
   );
 }
 
+
 function SubmitResultCard({ result }: { result: SubmitResult }) {
   const isPassed = result.status === 'pass';
   const isFailed = result.status === 'fail';
@@ -579,7 +582,7 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
   return (
     <div
       className={cn(
-        'p-5 animate-fade-in',
+        'p-5 animate-fade-in rounded-none',
         isPassed && 'result-pass',
         isFailed && 'result-fail',
         isError && 'result-error'
@@ -588,21 +591,21 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
       <div className="flex items-center gap-4">
         {isPassed && (
           <>
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-green/20 flex items-center justify-center">
+            <div className="flex-shrink-0 w-12 h-12 rounded-none bg-accent-green/20 flex items-center justify-center border border-accent-green/40 shadow-[0_0_10px_rgba(0,255,255,0.3)]">
               <CheckCircle className="w-7 h-7 text-accent-green" />
             </div>
             <div>
-              <div className="font-bold text-accent-green text-xl tracking-wide">
+              <div className="font-bold text-accent-green text-xl tracking-wide uppercase font-mono">
                 PASS
                 {result.place && (
-                  <span className="ml-3 text-tier-gold text-lg">
-                    #{result.place} место!
+                  <span className="ml-3 text-tier-gold text-lg drop-shadow-[0_0_5px_rgba(255,215,0,0.4)]">
+                    #{result.place} МЕСТО!
                   </span>
                 )}
               </div>
-              <div className="text-sm text-text-secondary mt-1">
-                {result.isNewBest ? 'Новый рекорд: ' : 'Результат: '}
-                <span className="font-mono font-bold text-accent-green text-base">{result.length}</span> символов
+              <div className="text-sm text-text-secondary mt-1 font-mono">
+                {result.isNewBest ? '// НОВЫЙ РЕКОРД: ' : '// РЕЗУЛЬТАТ: '}
+                <span className="font-bold text-accent-green text-base">{result.length}</span> СИМВОЛОВ
               </div>
             </div>
           </>
@@ -610,13 +613,13 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
         {isFailed && (
           <>
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-red/20 flex items-center justify-center">
+            <div className="flex-shrink-0 w-12 h-12 rounded-none bg-accent-red/20 flex items-center justify-center border border-accent-red/40 shadow-[0_0_10px_rgba(255,0,85,0.3)]">
               <XCircle className="w-7 h-7 text-accent-red" />
             </div>
             <div>
-              <div className="font-bold text-accent-red text-xl tracking-wide">FAIL</div>
-              <div className="text-sm text-text-secondary mt-1">
-                Пройдено тестов: <span className="font-mono font-bold text-text-primary">{result.testsPassed}</span> из <span className="font-mono">{result.testsTotal}</span>
+              <div className="font-bold text-accent-red text-xl tracking-wide uppercase font-mono">FAIL</div>
+              <div className="text-sm text-text-secondary mt-1 font-mono">
+                // Пройдено тестов: <span className="font-bold text-text-primary">{result.testsPassed}</span> из <span className="font-bold text-text-primary">{result.testsTotal}</span>
               </div>
             </div>
           </>
@@ -624,13 +627,13 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
         {isError && (
           <>
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-accent-yellow/20 flex items-center justify-center">
+            <div className="flex-shrink-0 w-12 h-12 rounded-none bg-accent-yellow/20 flex items-center justify-center border border-accent-yellow/40 shadow-[0_0_10px_rgba(255,220,0,0.3)]">
               <XCircle className="w-7 h-7 text-accent-yellow" />
             </div>
             <div>
-              <div className="font-bold text-accent-yellow text-xl tracking-wide">Ошибка</div>
-              <div className="text-sm text-text-secondary mt-1">
-                {result.errorMessage || 'Произошла ошибка при выполнении'}
+              <div className="font-bold text-accent-yellow text-xl tracking-wide uppercase font-mono">ОШИБКА</div>
+              <div className="text-sm text-text-secondary mt-1 font-mono">
+                // {result.errorMessage || 'ПРОИЗОШЛА ОШИБКА ПРИ ВЫПОЛНЕНИИ'}
               </div>
             </div>
           </>
@@ -649,6 +652,7 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
   );
 }
 
+
 function LocalCheckResultCard({ 
   result, 
   isLoggedIn,
@@ -663,14 +667,14 @@ function LocalCheckResultCard({
   return (
     <div
       className={cn(
-        'p-5 animate-fade-in',
+        'p-5 animate-fade-in rounded-none',
         isPassed ? 'result-pass' : 'result-fail'
       )}
     >
       <div className="flex items-start gap-4">
         <div className={cn(
-          'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-          isPassed ? 'bg-accent-green/20' : 'bg-accent-red/20'
+          'flex-shrink-0 w-12 h-12 rounded-none flex items-center justify-center border',
+          isPassed ? 'bg-accent-green/20 border-accent-green/40 shadow-[0_0_10px_rgba(0,255,255,0.3)]' : 'bg-accent-red/20 border-accent-red/40 shadow-[0_0_10px_rgba(255,0,85,0.3)]'
         )}>
           {isPassed ? (
             <CheckCircle className="w-7 h-7 text-accent-green" />
@@ -679,34 +683,34 @@ function LocalCheckResultCard({
           )}
         </div>
         <div className="flex-1">
-          <div className="font-bold text-xl tracking-wide">
+          <div className="font-bold text-xl tracking-wide uppercase font-mono">
             {isPassed ? (
-              <span className="text-accent-green">Все тесты пройдены!</span>
+              <span className="text-accent-green">// ВСЕ ТЕСТЫ ПРОЙДЕНЫ!</span>
             ) : (
               <span className="text-accent-red">
-                Пройдено {result.testsPassed} из {result.testsTotal}
+                // ПРОЙДЕНО {result.testsPassed} ИЗ {result.testsTotal}
               </span>
             )}
           </div>
           
-          <div className="text-sm text-text-secondary mt-1">
-            Длина: <span className={cn(
-              'font-mono font-bold text-base',
+          <div className="text-sm text-text-secondary mt-1 font-mono">
+            // ДЛИНА: <span className={cn(
+              'font-bold text-base',
               isPassed ? 'text-accent-green' : 'text-text-primary'
-            )}>{result.length}</span> символов
+            )}>{result.length}</span> СИМВОЛОВ
             {result.totalTime > 0 && (
-              <span className="ml-2 text-text-muted">• {result.totalTime.toFixed(0)} мс</span>
+              <span className="ml-2 text-text-muted">• {result.totalTime.toFixed(0)} МС</span>
             )}
           </div>
 
           {isPassed && !isLoggedIn && (
-            <div className="mt-4 p-3 bg-background-tertiary/50 rounded-lg border border-tier-gold/30">
-              <div className="text-sm text-tier-gold mb-2 font-medium">
-                Хочешь попасть в рейтинг?
+            <div className="mt-4 p-3 bg-background-tertiary/50 rounded-none border border-tier-gold/30">
+              <div className="text-sm text-tier-gold mb-2 font-medium uppercase font-mono">
+                // ХОЧЕШЬ ПОПАСТЬ В РЕЙТИНГ?
               </div>
               <Link href={`/auth?returnTo=${returnTo}`}>
-                <Button variant="primary" size="sm" icon={LogIn}>
-                  Войти или зарегистрироваться
+                <Button variant="primary" size="sm" icon={LogIn} className="neon-button">
+                  ВОЙТИ ИЛИ ЗАРЕГИСТРИРОВАТЬСЯ
                 </Button>
               </Link>
             </div>
@@ -726,6 +730,7 @@ function LocalCheckResultCard({
   );
 }
 
+
 function TestDetails({
   details,
   testsTotal,
@@ -740,18 +745,17 @@ function TestDetails({
   if (details.length === 0) return null;
 
   return (
-    <div className="mt-4">
-      <div className="text-sm text-text-secondary">
-        Тесты: <span className="text-text-primary font-medium">{testsPassed}</span> из{' '}
-        <span className="text-text-primary font-medium">{testsTotal}</span>
+    <div className="mt-4 p-4 rounded-none border border-border/50 bg-background-tertiary/50 font-mono">
+      <div className="text-sm text-text-secondary uppercase mb-2">
+        // ТЕСТЫ: <span className="text-text-primary font-bold">{testsPassed}</span> ИЗ <span className="text-text-primary font-bold">{testsTotal}</span>
         {hiddenCount > 0 && (
-          <span className="text-text-muted"> · скрытых: {hiddenCount}</span>
+          <span className="text-text-muted"> · СКРЫТЫХ: {hiddenCount}</span>
         )}
       </div>
 
       {hiddenCount > 0 && (
         <div className="mt-2 text-xs text-text-muted">
-          Скрытые тесты проверяются при отправке в рейтинг.
+          // СКРЫТЫЕ ТЕСТЫ ПРОВЕРЯЮТСЯ ПРИ ОТПРАВКЕ В РЕЙТИНГ.
         </div>
       )}
 
@@ -760,7 +764,7 @@ function TestDetails({
           <div
             key={test.index}
             className={cn(
-              'p-3 rounded-lg text-sm border',
+              'p-3 rounded-none text-sm border',
               test.passed
                 ? 'border-accent-green/30 bg-accent-green/5'
                 : 'border-accent-red/30 bg-accent-red/5'
@@ -772,10 +776,10 @@ function TestDetails({
               ) : (
                 <XCircle className="w-4 h-4 text-accent-red" />
               )}
-              <span className="font-medium">Тест {test.index + 1}</span>
+              <span className="font-bold text-text-primary">ТЕСТ {test.index + 1}</span>
               <span
                 className={cn(
-                  'text-xs',
+                  'text-xs uppercase',
                   test.passed ? 'text-accent-green' : 'text-accent-red'
                 )}
               >
@@ -784,11 +788,11 @@ function TestDetails({
             </div>
             <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
               <div>
-                Ввод: {test.input ? `solution(${test.input})` : 'solution()'}
+                // ВВОД: {test.input ? `solution(${test.input})` : 'solution()'}
               </div>
-              {test.expected && <div>Ожидалось: {test.expected}</div>}
-              {test.actual && <div>Получено: {test.actual}</div>}
-              {test.error && <div className="text-accent-red">{test.error}</div>}
+              {test.expected && <div>// ОЖИДАЛОСЬ: {test.expected}</div>}
+              {test.actual && <div>// ПОЛУЧЕНО: {test.actual}</div>}
+              {test.error && <div className="text-accent-red">// ОШИБКА: {test.error}</div>}
             </div>
           </div>
         ))}

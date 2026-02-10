@@ -97,9 +97,11 @@ export default async function TasksPage() {
       {/* Header */}
       <div className="border-b border-border bg-background-secondary/50">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-2">Задачи</h1>
-          <p className="text-text-secondary">
-            Тренируйся и совершенствуй навыки написания однострочников
+          <h1 className="text-4xl font-bold mb-2 text-accent-blue drop-shadow-[0_0_10px_rgba(0,242,255,0.4)]">
+            ЗАДАЧИ
+          </h1>
+          <p className="text-text-secondary font-mono">
+            // Тренируйся и совершенствуй навыки написания однострочников
           </p>
         </div>
       </div>
