@@ -192,6 +192,12 @@ const STEPIK_OAUTH_URL = 'https://stepik.org/oauth2/authorize/';
 const STEPIK_TOKEN_URL = 'https://stepik.org/oauth2/token/';
 const STEPIK_API_URL = 'https://stepik.org/api';
 
+interface StepikOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}
+
 interface StepikTokenResponse {
   access_token: string;
   token_type: string;
@@ -207,14 +213,34 @@ interface StepikUser {
   avatar: string | null;
 }
 
-// Генерация URL для авторизации через Stepik с CSRF state
-export function getStepikAuthUrl(state: string): string {
-  const clientId = process.env.STEPIK_CLIENT_ID;
-  const redirectUri = process.env.STEPIK_REDIRECT_URI;
+function getStepikOAuthConfig(): StepikOAuthConfig {
+  const clientId = process.env.STEPIK_CLIENT_ID || process.env.STEPIK_OAUTH_CLIENT_ID || '';
+  const clientSecret = process.env.STEPIK_CLIENT_SECRET || process.env.STEPIK_OAUTH_CLIENT_SECRET || '';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+  const redirectUri =
+    process.env.STEPIK_REDIRECT_URI ||
+    process.env.STEPIK_OAUTH_REDIRECT_URI ||
+    (baseUrl ? `${baseUrl.replace(/\/$/, '')}/api/auth/stepik/callback` : '');
 
-  if (!clientId || !redirectUri) {
+  if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('Stepik OAuth not configured');
   }
+
+  try {
+    const parsed = new URL(redirectUri);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('invalid_redirect_uri_protocol');
+    }
+  } catch {
+    throw new Error('Invalid STEPIK_REDIRECT_URI');
+  }
+
+  return { clientId, clientSecret, redirectUri };
+}
+
+// Генерация URL для авторизации через Stepik с CSRF state
+export function getStepikAuthUrl(state: string): string {
+  const { clientId, redirectUri } = getStepikOAuthConfig();
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -228,26 +254,40 @@ export function getStepikAuthUrl(state: string): string {
 
 // Обмен кода на токен
 export async function exchangeStepikCode(code: string): Promise<StepikTokenResponse> {
-  const clientId = process.env.STEPIK_CLIENT_ID;
-  const clientSecret = process.env.STEPIK_CLIENT_SECRET;
-  const redirectUri = process.env.STEPIK_REDIRECT_URI;
+  const { clientId, clientSecret, redirectUri } = getStepikOAuthConfig();
 
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error('Stepik OAuth not configured');
-  }
+  const baseBody = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: redirectUri,
+  });
 
-  const response = await fetch(STEPIK_TOKEN_URL, {
+  let response = await fetch(STEPIK_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
     },
-    body: new URLSearchParams({
+    body: baseBody,
+  });
+
+  if (!response.ok) {
+    const fallbackBody = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectUri,
-    }),
-  });
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+
+    response = await fetch(STEPIK_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: fallbackBody,
+    });
+  }
 
   if (!response.ok) {
     throw new Error(`Stepik token exchange failed: ${response.status}`);
@@ -269,18 +309,29 @@ export async function getStepikUser(accessToken: string): Promise<StepikUser> {
   }
 
   const data = await response.json();
-  const userId = data.users?.[0];
+  const rawUser = data.users?.[0];
+  const userId = typeof rawUser === 'number' ? rawUser : rawUser?.id;
 
   if (!userId) {
     throw new Error('Invalid Stepik user response');
   }
 
-  // Получаем подробную информацию о пользователе
-  const userResponse = await fetch(`${STEPIK_API_URL}/users/${userId}`, {
+  // Получаем подробную информацию о пользователе.
+  // Stepik API чаще возвращает пользователей через /users?ids[]=<id>,
+  // а не через /users/<id>.
+  let userResponse = await fetch(`${STEPIK_API_URL}/users?ids[]=${encodeURIComponent(String(userId))}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
+
+  if (!userResponse.ok && userResponse.status === 404) {
+    userResponse = await fetch(`${STEPIK_API_URL}/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
 
   if (!userResponse.ok) {
     throw new Error(`Failed to fetch Stepik user details: ${userResponse.status}`);
@@ -288,6 +339,10 @@ export async function getStepikUser(accessToken: string): Promise<StepikUser> {
 
   const userData = await userResponse.json();
   const user = userData.users?.[0];
+
+  if (!user || !user.id) {
+    throw new Error('Invalid Stepik user details response');
+  }
 
   return {
     id: user.id,
