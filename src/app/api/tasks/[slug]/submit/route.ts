@@ -98,21 +98,6 @@ export async function POST(
       );
     }
 
-    const userStatus = await prisma.user.findUnique({
-      where: { id: currentUser.id },
-      select: { email: true, emailVerified: true },
-    });
-
-    if (userStatus?.email && !userStatus.emailVerified) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Подтвердите email перед отправкой решений в рейтинг',
-        },
-        { status: 403 }
-      );
-    }
-
     const task = await prisma.task.findUnique({
       where: { slug },
       select: { id: true, constraintsJson: true, status: true },
