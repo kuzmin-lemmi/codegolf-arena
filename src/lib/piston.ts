@@ -77,6 +77,8 @@ export async function executeCode(
       }
 
       const data: PistonResponse = await response.json();
+      const runOutput = data.run.output || data.run.stdout || '';
+      const runStderr = data.run.stderr || '';
 
       if (data.compile && data.compile.code !== 0) {
         return {
@@ -89,21 +91,28 @@ export async function executeCode(
         };
       }
 
-      if (data.run.stderr && data.run.code !== 0) {
+      if (data.run.code !== 0 || data.run.signal) {
+        const errorText =
+          runStderr.trim() ||
+          runOutput.trim() ||
+          (data.run.signal
+            ? `Runtime terminated by signal: ${data.run.signal}`
+            : `Runtime error (exit code ${data.run.code})`);
+
         return {
-          output: data.run.stdout,
+          output: runOutput,
           stdout: data.run.stdout,
-          stderr: data.run.stderr,
-          error: data.run.stderr,
+          stderr: runStderr,
+          error: errorText,
           exitCode: data.run.code,
           errorKind: 'runtime',
         };
       }
 
       return {
-        output: data.run.stdout,
+        output: runOutput,
         stdout: data.run.stdout,
-        stderr: data.run.stderr || '',
+        stderr: runStderr,
         error: null,
         exitCode: data.run.code,
         errorKind: 'none',
