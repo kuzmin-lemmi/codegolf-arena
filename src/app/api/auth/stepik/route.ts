@@ -5,6 +5,19 @@ import { getStepikAuthUrl, generateOAuthState } from '@/lib/auth';
 
 const OAUTH_STATE_COOKIE = 'arena_oauth_state';
 
+function getPublicOrigin(request: NextRequest): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (baseUrl) {
+    try {
+      return new URL(baseUrl).origin;
+    } catch {
+      // fallback below
+    }
+  }
+
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,6 +51,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Error starting Stepik auth:', error);
-    return NextResponse.redirect(new URL('/auth?error=oauth_not_configured', request.url));
+    const origin = getPublicOrigin(request);
+    return NextResponse.redirect(new URL('/auth?error=oauth_not_configured', origin));
   }
 }

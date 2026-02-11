@@ -12,6 +12,23 @@ const SESSION_COOKIE_NAME = 'arena_session';
 const OAUTH_STATE_COOKIE = 'arena_oauth_state';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60; // 7 дней в секундах
 
+function getPublicOrigin(request: NextRequest): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (baseUrl) {
+    try {
+      return new URL(baseUrl).origin;
+    } catch {
+      // fallback below
+    }
+  }
+
+  return new URL(request.url).origin;
+}
+
+function buildAppUrl(path: string, request: NextRequest): URL {
+  return new URL(path, getPublicOrigin(request));
+}
+
 // Безопасная проверка returnTo против open redirect
 function getSafeReturnTo(returnToCookie: string | undefined): string {
   if (!returnToCookie) return '/';
@@ -33,17 +50,17 @@ export async function GET(request: NextRequest) {
     // Проверка на ошибки OAuth
     if (error) {
       console.error('Stepik OAuth error:', error);
-      return NextResponse.redirect(new URL('/auth?error=oauth_denied', request.url));
+      return NextResponse.redirect(buildAppUrl('/auth?error=oauth_denied', request));
     }
 
     if (!code) {
-      return NextResponse.redirect(new URL('/auth?error=no_code', request.url));
+      return NextResponse.redirect(buildAppUrl('/auth?error=no_code', request));
     }
 
     // CSRF validation: check state parameter
     if (!stateFromUrl || !stateFromCookie || stateFromUrl !== stateFromCookie) {
       console.error('OAuth CSRF validation failed: state mismatch');
-      return NextResponse.redirect(new URL('/auth?error=csrf_failed', request.url));
+      return NextResponse.redirect(buildAppUrl('/auth?error=csrf_failed', request));
     }
 
     // Обмен кода на токен
@@ -59,7 +76,7 @@ export async function GET(request: NextRequest) {
     const sessionToken = await createSession(user.id);
 
     // Устанавливаем cookie и редиректим
-    const response = NextResponse.redirect(new URL(returnTo, request.url));
+    const response = NextResponse.redirect(buildAppUrl(returnTo, request));
     
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
@@ -89,6 +106,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Stepik OAuth callback error:', error);
-    return NextResponse.redirect(new URL('/auth?error=auth_failed', request.url));
+    return NextResponse.redirect(buildAppUrl('/auth?error=auth_failed', request));
   }
 }

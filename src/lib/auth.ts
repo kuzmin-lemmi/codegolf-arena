@@ -194,8 +194,11 @@ const STEPIK_API_URL = 'https://stepik.org/api';
 
 interface StepikOAuthConfig {
   clientId: string;
-  clientSecret: string;
   redirectUri: string;
+}
+
+interface StepikTokenConfig extends StepikOAuthConfig {
+  clientSecret: string;
 }
 
 interface StepikTokenResponse {
@@ -213,7 +216,7 @@ interface StepikUser {
   avatar: string | null;
 }
 
-function getStepikOAuthConfig(): StepikOAuthConfig {
+function resolveStepikOAuthConfig(): StepikTokenConfig {
   const clientId = process.env.STEPIK_CLIENT_ID || process.env.STEPIK_OAUTH_CLIENT_ID || '';
   const clientSecret = process.env.STEPIK_CLIENT_SECRET || process.env.STEPIK_OAUTH_CLIENT_SECRET || '';
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
@@ -222,10 +225,10 @@ function getStepikOAuthConfig(): StepikOAuthConfig {
     process.env.STEPIK_OAUTH_REDIRECT_URI ||
     (baseUrl ? `${baseUrl.replace(/\/$/, '')}/api/auth/stepik/callback` : '');
 
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error('Stepik OAuth not configured');
-  }
+  return { clientId, clientSecret, redirectUri };
+}
 
+function validateStepikRedirectUri(redirectUri: string): void {
   try {
     const parsed = new URL(redirectUri);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -234,13 +237,35 @@ function getStepikOAuthConfig(): StepikOAuthConfig {
   } catch {
     throw new Error('Invalid STEPIK_REDIRECT_URI');
   }
+}
+
+function getStepikAuthConfig(): StepikOAuthConfig {
+  const { clientId, redirectUri } = resolveStepikOAuthConfig();
+
+  if (!clientId || !redirectUri) {
+    throw new Error('Stepik OAuth not configured: missing STEPIK_CLIENT_ID or STEPIK_REDIRECT_URI');
+  }
+
+  validateStepikRedirectUri(redirectUri);
+
+  return { clientId, redirectUri };
+}
+
+function getStepikTokenConfig(): StepikTokenConfig {
+  const { clientId, clientSecret, redirectUri } = resolveStepikOAuthConfig();
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    throw new Error('Stepik OAuth token exchange is not configured: missing client id/secret/redirect');
+  }
+
+  validateStepikRedirectUri(redirectUri);
 
   return { clientId, clientSecret, redirectUri };
 }
 
 // Генерация URL для авторизации через Stepik с CSRF state
 export function getStepikAuthUrl(state: string): string {
-  const { clientId, redirectUri } = getStepikOAuthConfig();
+  const { clientId, redirectUri } = getStepikAuthConfig();
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -254,7 +279,7 @@ export function getStepikAuthUrl(state: string): string {
 
 // Обмен кода на токен
 export async function exchangeStepikCode(code: string): Promise<StepikTokenResponse> {
-  const { clientId, clientSecret, redirectUri } = getStepikOAuthConfig();
+  const { clientId, clientSecret, redirectUri } = getStepikTokenConfig();
 
   const baseBody = new URLSearchParams({
     grant_type: 'authorization_code',
