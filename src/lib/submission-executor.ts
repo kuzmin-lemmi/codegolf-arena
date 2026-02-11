@@ -102,7 +102,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       index: testcase.orderIndex,
       args: Array.isArray(inputData.args) ? inputData.args : [],
       expectedOutput: testcase.expectedOutput,
-      isHidden: testcase.isHidden,
+      isHidden: false,
     };
   });
 
@@ -142,14 +142,14 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
 
   const testResults = parsedResults.map((item) => {
     const source = batchTestcases.find((t) => t.index === item.index);
-    const input = source?.isHidden ? undefined : (source?.args || []).map(toPythonLiteral).join(', ');
+    const input = (source?.args || []).map(toPythonLiteral).join(', ');
     return {
       index: item.index,
       passed: item.passed,
-      isHidden: item.isHidden,
+      isHidden: false,
       input,
-      expected: item.isHidden ? undefined : item.expected ?? undefined,
-      actual: item.isHidden ? undefined : item.actual ?? undefined,
+      expected: item.expected ?? undefined,
+      actual: item.actual ?? undefined,
       error: item.error || null,
     };
   });
@@ -320,16 +320,14 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
     pointsEarned: transactionResult.pointsEarned,
     pointsBreakdown: transactionResult.pointsBreakdown,
     errorMessage: status === 'error' ? submissionError : null,
-    details: testResults
-      .filter((t) => !t.isHidden)
-      .map((t) => ({
-        index: t.index,
-        passed: t.passed,
-        input: t.input,
-        expected: t.expected,
-        actual: t.actual,
-        error: t.error,
-      })),
+    details: testResults.map((t) => ({
+      index: t.index,
+      passed: t.passed,
+      input: t.input,
+      expected: t.expected,
+      actual: t.actual,
+      error: t.error,
+    })),
   };
 }
 
@@ -401,10 +399,10 @@ async function runPerTestFallback(params: {
       const expected = testcase.expectedOutput.trim();
       results.push({
         index: testcase.index,
-        isHidden: testcase.isHidden,
+        isHidden: false,
         passed: actual === expected,
-        actual: testcase.isHidden ? null : actual,
-        expected: testcase.isHidden ? null : expected,
+        actual,
+        expected,
         error: null,
       });
       continue;
@@ -412,10 +410,10 @@ async function runPerTestFallback(params: {
 
     results.push({
       index: testcase.index,
-      isHidden: testcase.isHidden,
+      isHidden: false,
       passed: false,
       actual: null,
-      expected: testcase.isHidden ? null : testcase.expectedOutput.trim(),
+      expected: testcase.expectedOutput.trim(),
       error: single.error || 'Execution failed',
     });
   }

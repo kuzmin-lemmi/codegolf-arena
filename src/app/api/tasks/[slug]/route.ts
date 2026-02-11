@@ -14,7 +14,6 @@ export async function GET(
       where: { slug },
       include: {
         testcases: {
-          where: { isHidden: false }, // Только открытые тесты
           orderBy: { orderIndex: 'asc' },
           select: {
             id: true,

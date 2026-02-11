@@ -735,8 +735,6 @@ function TestDetails({
   testsTotal: number;
   testsPassed: number;
 }) {
-  const hiddenCount = Math.max(0, testsTotal - details.length);
-
   if (details.length === 0) return null;
 
   return (
@@ -744,16 +742,7 @@ function TestDetails({
       <div className="text-sm text-text-secondary">
         Тесты: <span className="text-text-primary font-medium">{testsPassed}</span> из{' '}
         <span className="text-text-primary font-medium">{testsTotal}</span>
-        {hiddenCount > 0 && (
-          <span className="text-text-muted"> · скрытых: {hiddenCount}</span>
-        )}
       </div>
-
-      {hiddenCount > 0 && (
-        <div className="mt-2 text-xs text-text-muted">
-          Скрытые тесты проверяются при отправке в рейтинг.
-        </div>
-      )}
 
       <div className="mt-3 space-y-2">
         {details.map((test) => (

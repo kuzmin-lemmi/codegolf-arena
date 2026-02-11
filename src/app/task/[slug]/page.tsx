@@ -56,7 +56,6 @@ export default async function TaskPage({ params }: TaskPageProps) {
     where: { slug },
     include: {
       testcases: {
-        where: { isHidden: false },
         orderBy: { orderIndex: 'asc' },
         select: {
           inputData: true,
@@ -110,7 +109,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
     createdAt: task.createdAt,
   };
 
-  const openTestcases = task.testcases.map((tc) => ({
+  const allTestcases = task.testcases.map((tc) => ({
     inputData: JSON.parse(tc.inputData),
     expectedOutput: tc.expectedOutput,
   }));
@@ -169,7 +168,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 taskTitle={taskData.title}
                 nextTask={nextTask}
                 functionArgs={taskData.functionArgs}
-                testcases={openTestcases}
+                testcases={allTestcases}
                 allowedImports={taskData.constraintsJson.allowed_imports || []}
                 leaderboard={leaderboard}
                 currentUserRank={currentUserRank}
