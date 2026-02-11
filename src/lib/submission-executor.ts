@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { calculateCodeLength, validateOneliner } from '@/lib/utils';
 import { executeCode } from '@/lib/piston';
-import { generateBatchTestCode, toPythonLiteral } from '@/lib/python-serializer';
+import { generateBatchTestCode, generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
 import { getPassPoints } from '@/lib/points';
 import type { TaskTier } from '@/types';
 import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission-types';
@@ -18,6 +18,13 @@ interface BatchExecutionResultItem {
   actual?: string | null;
   expected?: string | null;
   error?: string | null;
+}
+
+interface BatchTestcaseItem {
+  index: number;
+  args: unknown[];
+  expectedOutput: string;
+  isHidden: boolean;
 }
 
 export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<SubmissionResponseData> {
@@ -89,7 +96,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
 
   const startTime = Date.now();
   const marker = randomBytes(16).toString('hex');
-  const batchTestcases = task.testcases.map((testcase) => {
+  const batchTestcases: BatchTestcaseItem[] = task.testcases.map((testcase) => {
     const inputData = JSON.parse(testcase.inputData);
     return {
       index: testcase.orderIndex,
@@ -121,7 +128,18 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
   let status: 'pass' | 'fail' | 'error' = 'fail';
   let submissionError: string | null = null;
 
-  const parsedResults = parseBatchResults(result.output, marker);
+  let parsedResults = parseBatchResults(result.output, marker);
+
+  if (shouldUsePerTestFallback(result, parsedResults)) {
+    parsedResults = await runPerTestFallback({
+      code,
+      functionArgs,
+      testcases: batchTestcases,
+      allowedImports: constraints.allowed_imports || [],
+      perTestTimeoutMs: Math.max(Number(constraints.timeout_ms || 2000), 1000),
+    });
+  }
+
   const testResults = parsedResults.map((item) => {
     const source = batchTestcases.find((t) => t.index === item.index);
     const input = source?.isHidden ? undefined : (source?.args || []).map(toPythonLiteral).join(', ');
@@ -342,4 +360,65 @@ function parseBatchResults(output: string, marker: string): BatchExecutionResult
   } catch {
     return [];
   }
+}
+
+function shouldUsePerTestFallback(
+  result: Awaited<ReturnType<typeof executeCode>>,
+  parsedResults: BatchExecutionResultItem[]
+): boolean {
+  if (parsedResults.length > 0) return false;
+
+  if (result.errorKind === 'timeout') return true;
+  if (result.errorKind !== 'runtime') return false;
+
+  const text = `${result.error || ''} ${result.stderr || ''} ${result.output || ''}`.toLowerCase();
+  return text.includes('sigkill') || text.includes('killed') || text.includes('timed out');
+}
+
+async function runPerTestFallback(params: {
+  code: string;
+  functionArgs: string[];
+  testcases: BatchTestcaseItem[];
+  allowedImports: string[];
+  perTestTimeoutMs: number;
+}): Promise<BatchExecutionResultItem[]> {
+  const results: BatchExecutionResultItem[] = [];
+
+  for (const testcase of params.testcases) {
+    const singleCode = generateTestCode(
+      params.code,
+      params.functionArgs,
+      testcase.args,
+      params.allowedImports
+    );
+
+    const timeout = Math.min(params.perTestTimeoutMs, 4000);
+    const signal = AbortSignal.timeout(timeout);
+    const single = await executeCode(singleCode, timeout, signal);
+
+    if (single.errorKind === 'none') {
+      const actual = single.output.trim();
+      const expected = testcase.expectedOutput.trim();
+      results.push({
+        index: testcase.index,
+        isHidden: testcase.isHidden,
+        passed: actual === expected,
+        actual: testcase.isHidden ? null : actual,
+        expected: testcase.isHidden ? null : expected,
+        error: null,
+      });
+      continue;
+    }
+
+    results.push({
+      index: testcase.index,
+      isHidden: testcase.isHidden,
+      passed: false,
+      actual: null,
+      expected: testcase.isHidden ? null : testcase.expectedOutput.trim(),
+      error: single.error || 'Execution failed',
+    });
+  }
+
+  return results;
 }
