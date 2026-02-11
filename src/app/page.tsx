@@ -158,8 +158,8 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background to-background-secondary">
-        <div className="hero-radial absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/10 via-transparent to-transparent" />
+      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background-secondary via-background to-background">
+        <div className="hero-radial absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/12 via-transparent to-transparent" />
         <div className="container mx-auto px-4 py-12 md:py-16 relative">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 text-accent-blue text-sm font-medium mb-6">
@@ -173,6 +173,7 @@ export default async function HomePage() {
               Решай задачи в одну строку. Соревнуйся за самый короткий код.
               Попади в топ рейтинга.
             </p>
+
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link href="/tasks">
                 <Button variant="primary" size="lg" className="w-full sm:w-auto">
