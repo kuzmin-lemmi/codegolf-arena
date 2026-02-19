@@ -103,7 +103,7 @@ async function main() {
             taskId: saved.id,
             inputData: JSON.stringify(tc.inputData),
             expectedOutput: String(tc.expectedOutput),
-            isHidden: idx >= 3,
+            isHidden: false,
             orderIndex: typeof tc.orderIndex === 'number' ? tc.orderIndex : idx,
           })),
         });
