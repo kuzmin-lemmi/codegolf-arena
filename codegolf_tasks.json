@@ -1299,7 +1299,10 @@
       ],
       "envs": [
         "base",
-        "math"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "math"
     },
@@ -1503,7 +1506,10 @@
       ],
       "envs": [
         "base",
-        "math"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "math"
     },
@@ -1889,8 +1895,10 @@
       ],
       "envs": [
         "base",
+        "math",
         "functools",
-        "math"
+        "itertools",
+        "re"
       ],
       "default_env": "math"
     },
@@ -6457,7 +6465,10 @@
       ],
       "envs": [
         "base",
-        "functools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "functools"
     },
@@ -6580,6 +6591,9 @@
       ],
       "envs": [
         "base",
+        "math",
+        "functools",
+        "itertools",
         "re"
       ],
       "default_env": "re"
@@ -6743,7 +6757,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -7225,7 +7242,10 @@
       ],
       "envs": [
         "base",
-        "math"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "math"
     },
@@ -7396,7 +7416,10 @@
       ],
       "envs": [
         "base",
-        "functools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "functools"
     },
@@ -7812,7 +7835,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -8767,7 +8793,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -8854,7 +8883,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -9108,7 +9140,10 @@
       ],
       "envs": [
         "base",
-        "functools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "functools"
     },
@@ -11139,7 +11174,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -11310,7 +11348,10 @@
       ],
       "envs": [
         "base",
-        "itertools"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "itertools"
     },
@@ -11398,6 +11439,9 @@
       ],
       "envs": [
         "base",
+        "math",
+        "functools",
+        "itertools",
         "re"
       ],
       "default_env": "re"
@@ -12194,7 +12238,10 @@
       ],
       "envs": [
         "base",
-        "math"
+        "math",
+        "functools",
+        "itertools",
+        "re"
       ],
       "default_env": "math"
     },
