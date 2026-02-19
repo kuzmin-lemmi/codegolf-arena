@@ -61,12 +61,28 @@ async function main() {
       continue;
     }
 
-    const constraintsJson = JSON.stringify(task.constraintsJson || {
+    // Сохраняем constraintsJson как есть, но гарантируем поля envs и default_env
+    const rawConstraints = task.constraintsJson || {};
+    const envs: string[] = Array.isArray(rawConstraints.envs)
+      ? (rawConstraints.envs as string[])
+      : (rawConstraints.allowed_imports && (rawConstraints.allowed_imports as string[]).length > 0
+          ? ['base', ...(rawConstraints.allowed_imports as string[])]
+          : ['base']);
+    const defaultEnv: string =
+      typeof rawConstraints.default_env === 'string' && rawConstraints.default_env
+        ? rawConstraints.default_env
+        : envs[0] || 'base';
+
+    const mergedConstraints = {
       forbidden_tokens: [';', 'eval', 'exec', '__import__'],
       allowed_imports: [],
       timeout_ms: 2000,
       topics: [],
-    });
+      ...rawConstraints,
+      envs,
+      default_env: defaultEnv,
+    };
+    const constraintsJson = JSON.stringify(mergedConstraints);
 
     const functionArgs = JSON.stringify(
       Array.isArray(task.functionArgs) ? task.functionArgs : ['x']
