@@ -83,15 +83,20 @@ _arena_validate_ast(_arena_source)
 }
 
 /**
- * Генерирует полный Python код для выполнения теста
+ * Генерирует полный Python код для выполнения теста.
+ * @param prelude — доверенный код окружения (из ENV[envId].prelude), вставляется до всего остального.
+ *                  Пользователь импорт не пишет — окружение подключает инструменты.
  */
 export function generateTestCode(
   userCode: string,
   functionArgs: string[],
   testArgs: unknown[],
-  allowedImports: string[] = []
+  allowedImports: string[] = [],
+  prelude: string = ''
 ): string {
-  // Импорты
+  // Prelude окружения (math, functools, itertools, re...) — доверенный, не фильтруется
+  const envPrelude = prelude ? prelude + '\n' : '';
+  // Старый путь через allowedImports оставлен для обратной совместимости
   const imports = allowedImports.length > 0
     ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
     : '';
@@ -103,7 +108,7 @@ export function generateTestCode(
   // Тестовые аргументы в Python формате
   const testArgsStr = testArgs.map(toPythonLiteral).join(', ');
 
-  return `${imports}${astSecurityPrelude}
+  return `${envPrelude}${imports}${astSecurityPrelude}
 
 def solution(${argsStr}):
     return ${userCode}
@@ -122,14 +127,18 @@ interface BatchTestcaseInput {
 /**
  * Генерирует Python код для прогона всех тестов за один запуск.
  * marker — уникальный секретный маркер для защиты от подделки вывода пользователем.
+ * prelude — доверенный код окружения (из ENV[envId].prelude), вставляется первым.
  */
 export function generateBatchTestCode(
   userCode: string,
   functionArgs: string[],
   testcases: BatchTestcaseInput[],
   allowedImports: string[] = [],
-  marker?: string
+  marker?: string,
+  prelude: string = ''
 ): string {
+  // Prelude окружения — доверенный, вставляется до всего остального
+  const envPrelude = prelude ? prelude + '\n' : '';
   const imports = allowedImports.length > 0
     ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
     : '';
@@ -147,7 +156,7 @@ export function generateBatchTestCode(
   const endMarker = marker ? `__ARENA_${marker}_END__` : '__ARENA_JSON_END__';
   const astSecurityPrelude = buildAstSecurityPrelude(userCode);
 
-  return `${imports}import json
+  return `${envPrelude}${imports}import json
 
 ${astSecurityPrelude}
 
