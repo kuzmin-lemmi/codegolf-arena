@@ -165,7 +165,8 @@ export async function checkOneliner(
     inputData: { args: any[] };
     expectedOutput: string;
   }>,
-  allowedImports: string[] = []
+  allowedImports: string[] = [],
+  prelude: string = ''
 ): Promise<CheckResult> {
   const startTime = performance.now();
   const results: TestResult[] = [];
@@ -179,7 +180,7 @@ export async function checkOneliner(
 
       try {
         const testArgsStr = test.inputData.args.map(toPythonLiteral).join(', ');
-        const fullCode = generateTestCode(userCode, functionArgs, test.inputData.args, allowedImports);
+        const fullCode = generateTestCode(userCode, functionArgs, test.inputData.args, allowedImports, prelude);
 
         // Выполняем
         const execResult = await executePython(fullCode, 3000);

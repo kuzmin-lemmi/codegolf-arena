@@ -14,7 +14,8 @@ interface UsePyodideReturn {
     code: string,
     functionArgs: string[],
     testcases: Array<{ inputData: { args: any[] }; expectedOutput: string }>,
-    allowedImports?: string[]
+    allowedImports?: string[],
+    prelude?: string
   ) => Promise<CheckResult | null>;
 }
 
@@ -64,7 +65,8 @@ export function usePyodide(autoLoad: boolean = false): UsePyodideReturn {
       code: string,
       functionArgs: string[],
       testcases: Array<{ inputData: { args: any[] }; expectedOutput: string }>,
-      allowedImports: string[] = []
+      allowedImports: string[] = [],
+      prelude: string = ''
     ): Promise<CheckResult | null> => {
       // Если Pyodide не загружен — загружаем
       if (!isReady) {
@@ -83,7 +85,7 @@ export function usePyodide(autoLoad: boolean = false): UsePyodideReturn {
 
       // Выполняем проверку
       try {
-        const result = await checkOneliner(code, functionArgs, testcases, allowedImports);
+        const result = await checkOneliner(code, functionArgs, testcases, allowedImports, prelude);
         return result;
       } catch (err: any) {
         setError(err.message || 'Check failed');

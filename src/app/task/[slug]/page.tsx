@@ -170,6 +170,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 functionArgs={taskData.functionArgs}
                 testcases={allTestcases}
                 allowedImports={taskData.constraintsJson.allowed_imports || []}
+                availableEnvs={taskData.constraintsJson.envs || ['base']}
+                defaultEnvId={taskData.constraintsJson.default_env || 'base'}
                 leaderboard={leaderboard}
                 currentUserRank={currentUserRank}
               />

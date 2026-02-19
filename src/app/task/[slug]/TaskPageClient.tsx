@@ -22,6 +22,8 @@ interface TaskPageClientProps {
     expectedOutput: string;
   }>;
   allowedImports: string[];
+  availableEnvs?: string[];
+  defaultEnvId?: string;
   leaderboard: LeaderboardEntry[];
   currentUserRank?: number;
 }
@@ -33,6 +35,8 @@ export function TaskPageClient({
   functionArgs,
   testcases,
   allowedImports,
+  availableEnvs,
+  defaultEnvId,
   leaderboard,
   currentUserRank,
 }: TaskPageClientProps) {
@@ -132,6 +136,8 @@ export function TaskPageClient({
           functionArgs={functionArgs}
           testcases={testcases}
           allowedImports={allowedImports}
+          availableEnvs={availableEnvs}
+          defaultEnvId={defaultEnvId}
           taskTitle={taskTitle}
           rankingTargets={{ top1: bestLength, top3: top3Target }}
           nextTask={nextTask}

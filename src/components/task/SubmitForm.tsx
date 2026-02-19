@@ -11,6 +11,7 @@ import { Send, RotateCcw, Play, CheckCircle, XCircle, Loader2, LogIn, Download }
 import { validateOneliner, calculateCodeLength, cn } from '@/lib/utils';
 import { usePyodide } from '@/hooks/usePyodide';
 import { SubmissionStatus } from '@/types';
+import { ENV, resolveEnvId, type EnvId } from '@/lib/environments';
 
 interface SubmitFormProps {
   taskSlug: string;
@@ -23,6 +24,8 @@ interface SubmitFormProps {
     expectedOutput: string;
   }>;
   allowedImports?: string[];
+  availableEnvs?: string[];    // EnvId[] — какие окружения доступны для задачи
+  defaultEnvId?: string;       // EnvId по умолчанию
   rankingTargets?: {
     top1: number | null;
     top3: number | null;
@@ -68,10 +71,32 @@ export function SubmitForm({
   functionArgs = ['s'],
   testcases = [],
   allowedImports = [],
+  availableEnvs,
+  defaultEnvId,
   rankingTargets,
   onCodeMetricsChange,
   onSubmitSuccess,
 }: SubmitFormProps) {
+  // Список допустимых окружений для задачи (всегда включает base)
+  const envOptions: EnvId[] = useMemo(() => {
+    const ids = (availableEnvs || ['base'])
+      .map((e) => resolveEnvId(e))
+      .filter((id, i, arr) => arr.indexOf(id) === i);
+    if (!ids.includes('base')) ids.unshift('base');
+    return ids;
+  }, [availableEnvs]);
+
+  const [selectedEnvId, setSelectedEnvId] = useState<EnvId>(() =>
+    resolveEnvId(defaultEnvId)
+  );
+
+  // Если задача сменилась — сбросить env на default
+  useEffect(() => {
+    setSelectedEnvId(resolveEnvId(defaultEnvId));
+  }, [taskSlug, defaultEnvId]);
+
+  const selectedEnv = ENV[selectedEnvId];
+
   const draftKey = useMemo(() => `task_draft:${taskSlug}`, [taskSlug]);
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,7 +154,7 @@ export function SubmitForm({
       const res = await fetch(`/api/tasks/${taskSlug}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, env_id: selectedEnvId }),
       });
 
       const data = await res.json();
@@ -248,8 +273,8 @@ export function SubmitForm({
         return;
       }
 
-      // Выполняем через Pyodide
-      const checkResult = await checkCode(code, functionArgs, testcases, allowedImports);
+      // Выполняем через Pyodide (передаём prelude окружения)
+      const checkResult = await checkCode(code, functionArgs, testcases, allowedImports, selectedEnv.prelude);
 
       if (!checkResult) {
         setLocalResult({
@@ -305,6 +330,34 @@ export function SubmitForm({
 
   return (
     <div className="space-y-4 pb-24 sm:pb-0">
+      {/* Environment selector — показывается только если есть выбор */}
+      {envOptions.length > 1 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-sm text-text-secondary whitespace-nowrap">Окружение:</label>
+            <select
+              value={selectedEnvId}
+              onChange={(e) => setSelectedEnvId(resolveEnvId(e.target.value))}
+              disabled={isSubmitting}
+              className="rounded-md border border-border bg-background-secondary px-2.5 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue disabled:opacity-50"
+            >
+              {envOptions.map((id) => (
+                <option key={id} value={id}>
+                  {ENV[id].label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedEnv.hint && (
+            <div className="text-xs text-text-muted">
+              {selectedEnv.hint}
+              {' '}
+              <span className="text-text-muted/70">Импорт писать не нужно — окружение подключит инструменты автоматически.</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Code Editor */}
       {/* Visual code scaffold */}
       <div className="rounded-lg border border-border overflow-hidden">
