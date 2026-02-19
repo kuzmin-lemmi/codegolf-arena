@@ -25,7 +25,11 @@
       "topics": [
         "строки",
         "сортировка"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.806Z",
@@ -234,7 +238,11 @@
       "topics": [
         "строки",
         "множества"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.791Z",
@@ -396,7 +404,11 @@
       "timeout_ms": 2000,
       "topics": [
         "числа"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.762Z",
@@ -548,7 +560,11 @@
       "timeout_ms": 2000,
       "topics": [
         "числа"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.745Z",
@@ -701,7 +717,11 @@
       "topics": [
         "списки",
         "матрицы"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.542Z",
@@ -892,7 +912,11 @@
       "topics": [
         "строки",
         "множества"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.466Z",
@@ -1054,7 +1078,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.415Z",
@@ -1263,14 +1291,17 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "math"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base",
+        "math"
+      ],
+      "default_env": "math"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.114Z",
@@ -1464,14 +1495,17 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "math"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base",
+        "math"
+      ],
+      "default_env": "math"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.102Z",
@@ -1668,7 +1702,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.812Z",
@@ -1740,7 +1778,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.798Z",
@@ -1840,13 +1882,17 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "functools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "functools",
+        "math"
+      ],
+      "default_env": "math"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.778Z",
@@ -1930,7 +1976,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.766Z",
@@ -2031,7 +2081,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.754Z",
@@ -2128,7 +2182,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.719Z",
@@ -2225,7 +2283,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.702Z",
@@ -2313,7 +2375,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.687Z",
@@ -2413,7 +2479,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.672Z",
@@ -2502,7 +2572,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.656Z",
@@ -2616,7 +2690,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.642Z",
@@ -2722,7 +2800,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.611Z",
@@ -2843,7 +2925,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.592Z",
@@ -2930,7 +3016,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.565Z",
@@ -3017,7 +3107,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.546Z",
@@ -3099,7 +3193,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.530Z",
@@ -3181,7 +3279,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.501Z",
@@ -3253,7 +3355,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.460Z",
@@ -3335,7 +3441,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.434Z",
@@ -3417,7 +3527,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.395Z",
@@ -3599,7 +3713,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.374Z",
@@ -3691,7 +3809,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.353Z",
@@ -3801,7 +3923,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.332Z",
@@ -3898,7 +4024,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.313Z",
@@ -3970,7 +4100,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.292Z",
@@ -4041,7 +4175,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.274Z",
@@ -4123,7 +4261,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.255Z",
@@ -4238,7 +4380,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.237Z",
@@ -4353,7 +4499,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.207Z",
@@ -4434,7 +4584,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.175Z",
@@ -4545,7 +4699,11 @@
       "timeout_ms": 2000,
       "topics": [
         "матрицы"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.971Z",
@@ -4794,7 +4952,11 @@
       "timeout_ms": 2000,
       "topics": [
         "матрицы"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.916Z",
@@ -5027,7 +5189,11 @@
       "topics": [
         "матрицы",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.901Z",
@@ -5320,7 +5486,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.885Z",
@@ -5512,7 +5682,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.868Z",
@@ -5645,7 +5819,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.648Z",
@@ -5757,7 +5935,11 @@
       "timeout_ms": 2000,
       "topics": [
         "числа"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.632Z",
@@ -5970,7 +6152,11 @@
       "topics": [
         "списки",
         "рекурсия"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.615Z",
@@ -6264,13 +6450,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "functools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "functools"
+      ],
+      "default_env": "functools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.955Z",
@@ -6384,13 +6573,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "re"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base",
+        "re"
+      ],
+      "default_env": "re"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.912Z",
@@ -6472,7 +6664,11 @@
       "timeout_ms": 2000,
       "topics": [
         "битовые операции"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.887Z",
@@ -6540,13 +6736,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.859Z",
@@ -6628,7 +6827,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.843Z",
@@ -6700,7 +6903,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.827Z",
@@ -6772,7 +6979,11 @@
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.809Z",
@@ -6855,7 +7066,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.796Z",
@@ -6931,7 +7146,11 @@
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.771Z",
@@ -6999,13 +7218,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "math"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "math"
+      ],
+      "default_env": "math"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.750Z",
@@ -7077,7 +7299,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.737Z",
@@ -7163,13 +7389,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "functools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "functools"
+      ],
+      "default_env": "functools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.718Z",
@@ -7245,7 +7474,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.705Z",
@@ -7330,7 +7563,11 @@
       "timeout_ms": 2000,
       "topics": [
         "битовые операции"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.675Z",
@@ -7412,7 +7649,11 @@
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.646Z",
@@ -7494,7 +7735,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.633Z",
@@ -7560,13 +7805,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.613Z",
@@ -7673,7 +7921,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.588Z",
@@ -7827,7 +8079,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.566Z",
@@ -7934,7 +8190,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.556Z",
@@ -8028,7 +8288,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.520Z",
@@ -8100,7 +8364,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.466Z",
@@ -8182,7 +8450,11 @@
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.432Z",
@@ -8254,7 +8526,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.409Z",
@@ -8326,7 +8602,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.393Z",
@@ -8408,7 +8688,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.382Z",
@@ -8476,13 +8760,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.372Z",
@@ -8560,13 +8847,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.359Z",
@@ -8639,7 +8929,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.343Z",
@@ -8807,13 +9101,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "functools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base",
+        "functools"
+      ],
+      "default_env": "functools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.325Z",
@@ -8886,7 +9183,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.951Z",
@@ -9008,7 +9309,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.934Z",
@@ -9161,7 +9466,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.838Z",
@@ -9379,7 +9688,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.824Z",
@@ -9617,7 +9930,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.777Z",
@@ -9780,7 +10097,11 @@
       "topics": [
         "строки",
         "regex"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.728Z",
@@ -9943,7 +10264,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.593Z",
@@ -10140,7 +10465,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.523Z",
@@ -10323,7 +10652,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.500Z",
@@ -10515,7 +10848,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-07T19:37:13.483Z",
@@ -10617,7 +10954,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.315Z",
@@ -10703,7 +11044,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.304Z",
@@ -10787,13 +11132,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.291Z",
@@ -10840,7 +11188,11 @@
       "timeout_ms": 2000,
       "topics": [
         "матрицы"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.277Z",
@@ -10951,13 +11303,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "itertools"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base",
+        "itertools"
+      ],
+      "default_env": "itertools"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.256Z",
@@ -11035,14 +11390,17 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "re"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "строки",
         "regex"
-      ]
+      ],
+      "envs": [
+        "base",
+        "re"
+      ],
+      "default_env": "re"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.235Z",
@@ -11225,7 +11583,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.222Z",
@@ -11313,7 +11675,11 @@
       "topics": [
         "списки",
         "словари"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.207Z",
@@ -11499,7 +11865,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.170Z",
@@ -11588,7 +11958,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.152Z",
@@ -11718,7 +12092,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.132Z",
@@ -11809,13 +12187,16 @@
         "exec",
         "__import__"
       ],
-      "allowed_imports": [
-        "math"
-      ],
+      "allowed_imports": [],
       "timeout_ms": 2000,
       "topics": [
         "математика"
-      ]
+      ],
+      "envs": [
+        "base",
+        "math"
+      ],
+      "default_env": "math"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.087Z",
@@ -11868,7 +12249,11 @@
       "topics": [
         "числа",
         "математика"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.073Z",
@@ -12080,7 +12465,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.062Z",
@@ -12162,7 +12551,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.051Z",
@@ -12234,7 +12627,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.038Z",
@@ -12317,7 +12714,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.027Z",
@@ -12415,7 +12816,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.017Z",
@@ -12508,7 +12913,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:25.006Z",
@@ -12558,7 +12967,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.996Z",
@@ -12656,7 +13069,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.975Z",
@@ -12756,7 +13173,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.959Z",
@@ -12838,7 +13259,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.928Z",
@@ -12920,7 +13345,11 @@
       "timeout_ms": 2000,
       "topics": [
         "разное"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.903Z",
@@ -13025,7 +13454,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.892Z",
@@ -13118,7 +13551,11 @@
       "timeout_ms": 2000,
       "topics": [
         "списки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.876Z",
@@ -13243,7 +13680,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.846Z",
@@ -13315,7 +13756,11 @@
       "timeout_ms": 2000,
       "topics": [
         "строки"
-      ]
+      ],
+      "envs": [
+        "base"
+      ],
+      "default_env": "base"
     },
     "status": "published",
     "createdAt": "2026-02-05T19:39:24.828Z",
