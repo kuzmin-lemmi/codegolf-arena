@@ -39,6 +39,8 @@ export interface TaskConstraints {
   timeout_ms: number;
   memory_limit_mb?: number;
   topics?: string[];
+  envs?: string[];        // допустимые EnvId для задачи
+  default_env?: string;  // EnvId по умолчанию
 }
 
 export interface Testcase {

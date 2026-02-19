@@ -23,4 +23,5 @@ export interface TaskSubmitPayload {
   userId: string;
   taskSlug: string;
   code: string;
+  envId?: string; // EnvId окружения, выбранного пользователем
 }
