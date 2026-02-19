@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { validateOneliner } from '@/lib/utils';
-import { checkRateLimit, checkSubmitStatusRateLimit } from '@/lib/rate-limiter';
+import {
+  checkRateLimit,
+  checkSubmitIpRateLimit,
+  checkSubmitStatusRateLimit,
+  getClientIP,
+} from '@/lib/rate-limiter';
 import {
   enqueueTaskSubmissionJob,
   getSubmissionJob,
@@ -76,6 +81,25 @@ export async function POST(
   if (csrfError) return csrfError;
 
   try {
+    const ipRateLimitResult = await checkSubmitIpRateLimit(getClientIP(request));
+    if (!ipRateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Слишком много отправок с этого IP. Повторите через ${ipRateLimitResult.retryAfter} сек.`,
+          retryAfter: ipRateLimitResult.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(ipRateLimitResult.retryAfter),
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '0',
+          },
+        }
+      );
+    }
+
     const { slug } = await params;
 
     const currentUser = await getCurrentUser(request);
@@ -166,6 +190,8 @@ export async function POST(
           headers: {
             'X-RateLimit-Limit': '10',
             'X-RateLimit-Remaining': String(rateLimitResult.remaining || 0),
+            'X-RateLimit-IP-Limit': '30',
+            'X-RateLimit-IP-Remaining': String(ipRateLimitResult.remaining || 0),
           },
         }
       );

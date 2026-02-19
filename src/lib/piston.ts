@@ -2,7 +2,8 @@
 
 const PISTON_API_URL = process.env.PISTON_API_URL || 'https://emkc.org/api/v2/piston';
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
-const MAX_RETRIES = 2;
+const MAX_RETRIES = Number(process.env.PISTON_MAX_RETRIES || 2);
+const COMPILE_TIMEOUT_MS = Number(process.env.PISTON_COMPILE_TIMEOUT_MS || 5000);
 
 interface PistonResponse {
   run: {
@@ -54,11 +55,12 @@ export async function executeCode(
             },
           ],
           run_timeout: timeout,
-          compile_timeout: 5000,
+          compile_timeout: COMPILE_TIMEOUT_MS,
         }),
       });
 
       if (!response.ok) {
+        const errorMessage = await readPistonError(response);
         if (RETRYABLE_STATUS.has(response.status) && attempt < MAX_RETRIES) {
           await sleep(getBackoffMs(attempt));
           attempt += 1;
@@ -69,7 +71,7 @@ export async function executeCode(
           output: '',
           stdout: '',
           stderr: '',
-          error: `Piston API error: ${response.status}`,
+          error: errorMessage,
           exitCode: -1,
           errorKind: RETRYABLE_STATUS.has(response.status) ? 'infra' : 'runtime',
           httpStatus: response.status,
@@ -160,11 +162,26 @@ export async function executeCode(
 
 function getBackoffMs(attempt: number): number {
   const base = 300;
-  return base * Math.pow(2, attempt);
+  const jitter = Math.floor(Math.random() * 120);
+  return base * Math.pow(2, attempt) + jitter;
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readPistonError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { message?: string };
+    const message = body?.message?.trim();
+    if (message) {
+      return `Piston API error: ${response.status} (${message})`;
+    }
+  } catch {
+    // Ignore malformed JSON
+  }
+
+  return `Piston API error: ${response.status}`;
 }
 
 // Получаем доступные версии Python

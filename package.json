@@ -18,6 +18,7 @@
     "db:reset": "prisma db push --force-reset && npm run db:seed",
     "db:topics:backfill": "npx tsx scripts/backfill-task-topics.ts",
     "db:tasks:import": "npx tsx scripts/import-codegolf-tasks.ts",
+    "db:tasks:import-export": "npx tsx scripts/import-tasks-from-export.ts",
     "db:tasks:cleanup": "npx tsx scripts/cleanup-duplicate-tasks.ts",
     "ops:preflight:postgres": "npx tsx scripts/preflight-postgres.ts",
     "ops:smoke": "npx tsx scripts/smoke-check.ts",
@@ -27,6 +28,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.0",

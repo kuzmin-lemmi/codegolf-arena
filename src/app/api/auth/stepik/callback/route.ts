@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Обмен кода на токен
-    const tokenData = await exchangeStepikCode(code);
+    const tokenData = await exchangeStepikCode(code, {
+      requestOrigin: getPublicOrigin(request),
+    });
 
     // Получение данных пользователя
     const stepikUser = await getStepikUser(tokenData.access_token);

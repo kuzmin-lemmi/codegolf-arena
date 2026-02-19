@@ -36,6 +36,9 @@ NODE_ENV=production npm run ops:preflight:postgres
 echo "[5/9] Apply DB schema"
 npm run db:push
 
+echo "[5.5/9] Import tasks from codegolf_tasks.json"
+npm run db:tasks:import-export
+
 echo "[6/9] Build"
 npm run build
 

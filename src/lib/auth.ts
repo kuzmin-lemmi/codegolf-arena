@@ -201,6 +201,10 @@ interface StepikTokenConfig extends StepikOAuthConfig {
   clientSecret: string;
 }
 
+interface StepikAuthRuntimeContext {
+  requestOrigin?: string;
+}
+
 interface StepikTokenResponse {
   access_token: string;
   token_type: string;
@@ -216,13 +220,32 @@ interface StepikUser {
   avatar: string | null;
 }
 
-function resolveStepikOAuthConfig(): StepikTokenConfig {
-  const clientId = process.env.STEPIK_CLIENT_ID || process.env.STEPIK_OAUTH_CLIENT_ID || '';
-  const clientSecret = process.env.STEPIK_CLIENT_SECRET || process.env.STEPIK_OAUTH_CLIENT_SECRET || '';
+function resolveStepikOAuthConfig(context?: StepikAuthRuntimeContext): StepikTokenConfig {
+  const requestOrigin = context?.requestOrigin || '';
+  const isLocalRequest = /localhost|127\.0\.0\.1|::1/i.test(requestOrigin);
+
+  const localClientId = process.env.STEPIK_CLIENT_ID_LOCAL || process.env.STEPIK_OAUTH_CLIENT_ID_LOCAL || '';
+  const localClientSecret =
+    process.env.STEPIK_CLIENT_SECRET_LOCAL || process.env.STEPIK_OAUTH_CLIENT_SECRET_LOCAL || '';
+
+  const clientId =
+    (isLocalRequest && localClientId) ||
+    process.env.STEPIK_CLIENT_ID ||
+    process.env.STEPIK_OAUTH_CLIENT_ID ||
+    '';
+  const clientSecret =
+    (isLocalRequest && localClientSecret) ||
+    process.env.STEPIK_CLIENT_SECRET ||
+    process.env.STEPIK_OAUTH_CLIENT_SECRET ||
+    '';
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+  const localRedirectUri = process.env.STEPIK_REDIRECT_URI_LOCAL || process.env.STEPIK_OAUTH_REDIRECT_URI_LOCAL || '';
   const redirectUri =
+    (isLocalRequest && localRedirectUri) ||
     process.env.STEPIK_REDIRECT_URI ||
     process.env.STEPIK_OAUTH_REDIRECT_URI ||
+    (requestOrigin ? `${requestOrigin.replace(/\/$/, '')}/api/auth/stepik/callback` : '') ||
     (baseUrl ? `${baseUrl.replace(/\/$/, '')}/api/auth/stepik/callback` : '');
 
   return { clientId, clientSecret, redirectUri };
@@ -239,8 +262,8 @@ function validateStepikRedirectUri(redirectUri: string): void {
   }
 }
 
-function getStepikAuthConfig(): StepikOAuthConfig {
-  const { clientId, redirectUri } = resolveStepikOAuthConfig();
+function getStepikAuthConfig(context?: StepikAuthRuntimeContext): StepikOAuthConfig {
+  const { clientId, redirectUri } = resolveStepikOAuthConfig(context);
 
   if (!clientId || !redirectUri) {
     throw new Error('Stepik OAuth not configured: missing STEPIK_CLIENT_ID or STEPIK_REDIRECT_URI');
@@ -251,8 +274,8 @@ function getStepikAuthConfig(): StepikOAuthConfig {
   return { clientId, redirectUri };
 }
 
-function getStepikTokenConfig(): StepikTokenConfig {
-  const { clientId, clientSecret, redirectUri } = resolveStepikOAuthConfig();
+function getStepikTokenConfig(context?: StepikAuthRuntimeContext): StepikTokenConfig {
+  const { clientId, clientSecret, redirectUri } = resolveStepikOAuthConfig(context);
 
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('Stepik OAuth token exchange is not configured: missing client id/secret/redirect');
@@ -264,8 +287,8 @@ function getStepikTokenConfig(): StepikTokenConfig {
 }
 
 // Генерация URL для авторизации через Stepik с CSRF state
-export function getStepikAuthUrl(state: string): string {
-  const { clientId, redirectUri } = getStepikAuthConfig();
+export function getStepikAuthUrl(state: string, context?: StepikAuthRuntimeContext): string {
+  const { clientId, redirectUri } = getStepikAuthConfig(context);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -278,8 +301,11 @@ export function getStepikAuthUrl(state: string): string {
 }
 
 // Обмен кода на токен
-export async function exchangeStepikCode(code: string): Promise<StepikTokenResponse> {
-  const { clientId, clientSecret, redirectUri } = getStepikTokenConfig();
+export async function exchangeStepikCode(
+  code: string,
+  context?: StepikAuthRuntimeContext
+): Promise<StepikTokenResponse> {
+  const { clientId, clientSecret, redirectUri } = getStepikTokenConfig(context);
 
   const baseBody = new URLSearchParams({
     grant_type: 'authorization_code',

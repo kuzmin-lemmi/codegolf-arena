@@ -1,7 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function extractOrigin(rawUrl: string | undefined): string | null {
+  if (!rawUrl) return null;
+  try {
+    return new URL(rawUrl).origin;
+  } catch {
+    return null;
+  }
+}
+
 function buildCsp(): string {
+  const connectSources = new Set([
+    "'self'",
+    'https://cdn.jsdelivr.net',
+    'https://stepik.org',
+  ]);
+
+  const pistonOrigin = extractOrigin(process.env.PISTON_API_URL);
+  if (pistonOrigin) {
+    connectSources.add(pistonOrigin);
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    connectSources.add('http://127.0.0.1:2000');
+    connectSources.add('http://localhost:2000');
+  }
+
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -11,7 +36,7 @@ function buildCsp(): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
-    "connect-src 'self' https://emkc.org https://cdn.jsdelivr.net https://stepik.org",
+    `connect-src ${Array.from(connectSources).join(' ')}`,
     "worker-src 'self' blob:",
     "form-action 'self' https://stepik.org",
   ].join('; ');

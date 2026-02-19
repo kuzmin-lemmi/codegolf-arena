@@ -15,6 +15,9 @@ const AUTH_RATE_LIMIT_MAX_REQUESTS = 5;
 const SUBMIT_STATUS_WINDOW_MS = 10 * 1000;
 const SUBMIT_STATUS_MAX_REQUESTS = 20;
 
+const SUBMIT_IP_WINDOW_MS = 60 * 1000;
+const SUBMIT_IP_MAX_REQUESTS = 30;
+
 const MAX_STORE_SIZE = 10000;
 
 const REDIS_URL = process.env.RATE_LIMIT_REDIS_URL || '';
@@ -194,6 +197,12 @@ export async function checkSubmitStatusRateLimit(
     SUBMIT_STATUS_WINDOW_MS,
     SUBMIT_STATUS_MAX_REQUESTS
   );
+}
+
+export async function checkSubmitIpRateLimit(
+  ip: string
+): Promise<{ allowed: boolean; retryAfter?: number; remaining?: number }> {
+  return checkLimit(`submit-ip:${ip}`, SUBMIT_IP_WINDOW_MS, SUBMIT_IP_MAX_REQUESTS);
 }
 
 export function getClientIP(request: Request): string {

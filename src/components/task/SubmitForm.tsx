@@ -76,6 +76,7 @@ export function SubmitForm({
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitQueueStatus, setSubmitQueueStatus] = useState<string | null>(null);
+  const [submitQueueProgress, setSubmitQueueProgress] = useState<number>(0);
   const [isChecking, setIsChecking] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [localResult, setLocalResult] = useState<LocalCheckResult | null>(null);
@@ -120,6 +121,7 @@ export function SubmitForm({
 
     setIsSubmitting(true);
     setSubmitQueueStatus(null);
+    setSubmitQueueProgress(0);
     setResult(null);
     setLocalResult(null);
 
@@ -169,6 +171,7 @@ export function SubmitForm({
     } finally {
       setIsSubmitting(false);
       setSubmitQueueStatus(null);
+      setSubmitQueueProgress(0);
     }
   };
 
@@ -176,6 +179,7 @@ export function SubmitForm({
     const maxAttempts = 80;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      setSubmitQueueProgress(Math.round((attempt / maxAttempts) * 100));
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const statusRes = await fetch(
@@ -198,15 +202,18 @@ export function SubmitForm({
 
       if (statusData.status === 'queued') {
         setSubmitQueueStatus('В очереди на проверку...');
+        setSubmitQueueProgress(15);
         continue;
       }
 
       if (statusData.status === 'running') {
         setSubmitQueueStatus('Проверяется на сервере...');
+        setSubmitQueueProgress(65);
         continue;
       }
 
       if (statusData.status === 'done' && statusData.data) {
+        setSubmitQueueProgress(100);
         return statusData.data as SubmitResult;
       }
 
@@ -394,7 +401,15 @@ export function SubmitForm({
       )}
 
       {isSubmitting && submitQueueStatus && (
-        <div className="text-sm text-accent-blue">{submitQueueStatus}</div>
+        <div className="space-y-2">
+          <div className="text-sm text-accent-blue">{submitQueueStatus}</div>
+          <div className="h-2 rounded-full bg-background-tertiary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-accent-blue transition-all duration-300"
+              style={{ width: `${submitQueueProgress}%` }}
+            />
+          </div>
+        </div>
       )}
 
       <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
@@ -777,6 +792,11 @@ function TestDetails({
               </div>
               {test.expected && <div>Ожидалось: {test.expected}</div>}
               {test.actual && <div>Получено: {test.actual}</div>}
+              {!test.passed && test.expected && test.actual && (
+                <div>
+                  Diff: {formatDiffHint(test.expected, test.actual)}
+                </div>
+              )}
               {test.error && <div className="text-accent-red">{test.error}</div>}
             </div>
           </div>
@@ -784,4 +804,31 @@ function TestDetails({
       </div>
     </div>
   );
+}
+
+function formatDiffHint(expected: string, actual: string): string {
+  if (expected === actual) return 'значения совпадают';
+
+  const minLength = Math.min(expected.length, actual.length);
+  let firstMismatch = 0;
+
+  while (firstMismatch < minLength && expected[firstMismatch] === actual[firstMismatch]) {
+    firstMismatch += 1;
+  }
+
+  if (firstMismatch === minLength && expected.length !== actual.length) {
+    return `разная длина: ожидалось ${expected.length}, получено ${actual.length}`;
+  }
+
+  const expectedChar = printableChar(expected[firstMismatch]);
+  const actualChar = printableChar(actual[firstMismatch]);
+  return `первое отличие на позиции ${firstMismatch + 1}: ожидалось ${expectedChar}, получено ${actualChar}`;
+}
+
+function printableChar(value: string | undefined): string {
+  if (!value) return '<конец строки>';
+  if (value === ' ') return "' '";
+  if (value === '\n') return "'\\n'";
+  if (value === '\t') return "'\\t'";
+  return `'${value}'`;
 }

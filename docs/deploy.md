@@ -66,7 +66,49 @@ curl -fsS http://127.0.0.1:3000/api/health && echo
 curl -fsS https://codegolf.ru/api/health && echo
 ```
 
-Обе проверки `health` должны вернуть JSON с `"success":true`.
+Обе проверки `health` должны вернуть JSON с `"success":true`, а внутри `data.piston.ok` должно быть `true`.
+
+---
+
+## 3.1) Piston: безопасный запуск с лимитами
+
+Запускай контейнер через скрипт (с лимитами CPU/RAM и ротацией логов):
+
+```bash
+cd /home/deploy/codegolf-arena
+bash scripts/run-piston.sh
+```
+
+Проверка:
+
+```bash
+docker ps --filter name=piston
+curl -fsS http://127.0.0.1:2000/api/v2/runtimes | head
+```
+
+---
+
+## 3.2) Watchdog для Piston (cron)
+
+Скрипт watchdog:
+
+```bash
+cd /home/deploy/codegolf-arena
+chmod +x scripts/piston-watchdog.sh
+```
+
+Добавить в cron пользователя `deploy`:
+
+```bash
+crontab -e
+*/5 * * * * /home/deploy/codegolf-arena/scripts/piston-watchdog.sh
+```
+
+Проверка логов watchdog:
+
+```bash
+journalctl -t piston-watchdog -n 100 --no-pager
+```
 
 ---
 

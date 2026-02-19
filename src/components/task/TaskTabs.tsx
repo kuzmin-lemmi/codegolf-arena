@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LeaderboardTable, LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
-import { Lock, Code2, Trophy, Loader2 } from 'lucide-react';
+import { Lock, Code2, Trophy, Loader2, History, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui';
 
 interface TaskTabsProps {
@@ -24,7 +24,18 @@ interface SolutionEntry {
   achievedAt: Date | string;
 }
 
-type TabId = 'description' | 'leaderboard' | 'solutions';
+type TabId = 'description' | 'leaderboard' | 'solutions' | 'attempts';
+
+interface SubmissionHistoryEntry {
+  id: string;
+  status: 'pending' | 'pass' | 'fail' | 'error';
+  codeLength: number;
+  testsPassed: number;
+  testsTotal: number;
+  runtimeMs: number | null;
+  errorMessage: string | null;
+  createdAt: Date | string;
+}
 
 export function TaskTabs({
   leaderboard,
@@ -37,6 +48,9 @@ export function TaskTabs({
   const [canViewSolutions, setCanViewSolutions] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<SubmissionHistoryEntry[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,9 +90,47 @@ export function TaskTabs({
     };
   }, [taskSlug, refreshKey]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const res = await fetch(`/api/tasks/${taskSlug}/submissions`, { cache: 'no-store' });
+        const json = await res.json();
+
+        if (!isMounted) return;
+
+        if (!json.success) {
+          setHistoryEntries([]);
+          setHistoryError(json.error || 'Не удалось загрузить историю попыток');
+          return;
+        }
+
+        setHistoryEntries(json.data || []);
+        setHistoryError(null);
+      } catch {
+        if (!isMounted) return;
+        setHistoryEntries([]);
+        setHistoryError('Не удалось загрузить историю попыток');
+      } finally {
+        if (isMounted) {
+          setHistoryLoading(false);
+        }
+      }
+    };
+
+    fetchHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [taskSlug, refreshKey]);
+
   const tabs = [
     { id: 'leaderboard' as const, label: 'Лидерборд', icon: Trophy },
     { id: 'solutions' as const, label: 'Решения', icon: Code2, locked: !canViewSolutions },
+    { id: 'attempts' as const, label: 'Мои попытки', icon: History },
   ];
 
   return (
@@ -121,7 +173,92 @@ export function TaskTabs({
             isLoading={isLoading}
           />
         )}
+
+        {activeTab === 'attempts' && (
+          <SubmissionHistoryContent
+            entries={historyEntries}
+            error={historyError}
+            isLoading={historyLoading}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+function SubmissionHistoryContent({
+  entries,
+  error,
+  isLoading,
+}: {
+  entries: SubmissionHistoryEntry[];
+  error: string | null;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <Loader2 className="w-8 h-8 text-text-muted animate-spin" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Загрузка попыток</h3>
+        <p className="text-text-secondary">Подождите немного</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8 text-accent-yellow" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Не удалось загрузить</h3>
+        <p className="text-text-secondary max-w-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <History className="w-8 h-8 text-text-muted" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Пока нет попыток</h3>
+        <p className="text-text-secondary">Отправь первое решение и здесь появится история.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {entries.map((entry) => (
+        <div key={entry.id} className="p-3 rounded-lg border border-border bg-background-tertiary/40">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm">
+              {entry.status === 'pass' ? (
+                <CheckCircle2 className="w-4 h-4 text-accent-green" />
+              ) : entry.status === 'fail' ? (
+                <XCircle className="w-4 h-4 text-accent-red" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-accent-yellow" />
+              )}
+              <span className="font-medium uppercase">{entry.status}</span>
+              <span className="text-text-muted">{new Date(entry.createdAt).toLocaleString('ru-RU')}</span>
+            </div>
+            <span className="font-mono text-accent-blue">{entry.codeLength} симв.</span>
+          </div>
+
+          <div className="mt-2 text-xs text-text-secondary flex flex-wrap gap-3">
+            <span>
+              Тесты: {entry.testsPassed}/{entry.testsTotal}
+            </span>
+            {entry.runtimeMs !== null && <span>Время: {entry.runtimeMs} мс</span>}
+            {entry.errorMessage && <span className="text-accent-red">{entry.errorMessage}</span>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

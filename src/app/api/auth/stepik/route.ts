@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
     
     // Generate CSRF state token
     const state = generateOAuthState();
-    const authUrl = getStepikAuthUrl(state);
+    const authUrl = getStepikAuthUrl(state, {
+      requestOrigin: getPublicOrigin(request),
+    });
     const response = NextResponse.redirect(authUrl);
 
     // Store state in cookie for validation on callback
