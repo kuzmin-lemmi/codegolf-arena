@@ -15,6 +15,7 @@ import {
   SubmissionJobsOverflowError,
 } from '@/lib/submission-jobs';
 import { validateMutationRequest } from '@/lib/security';
+import { resolveEnvId } from '@/lib/environments';
 
 export async function GET(
   request: NextRequest,
@@ -104,7 +105,8 @@ export async function POST(
 
     const currentUser = await getCurrentUser(request);
     const body = await request.json();
-    const { code } = body;
+    const { code, env_id } = body;
+    const envId = resolveEnvId(env_id);
 
     if (!code || typeof code !== 'string') {
       return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 });
@@ -163,8 +165,8 @@ export async function POST(
       }
     }
 
-    const codeHash = createHash('sha256').update(`${task.id}:${code}`).digest('hex');
-    const dedupKey = `${currentUser.id}:${task.id}:${codeHash}`;
+    const codeHash = createHash('sha256').update(`${task.id}:${envId}:${code}`).digest('hex');
+    const dedupKey = `${currentUser.id}:${task.id}:${envId}:${codeHash}`;
 
     try {
       const jobId = await enqueueTaskSubmissionJob({
@@ -175,6 +177,7 @@ export async function POST(
           userId: currentUser.id,
           taskSlug: slug,
           code,
+          envId,
         },
       });
 

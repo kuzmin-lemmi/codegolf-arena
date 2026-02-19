@@ -5,6 +5,7 @@ import { calculateCodeLength, validateOneliner } from '@/lib/utils';
 import { executeCode } from '@/lib/piston';
 import { generateBatchTestCode, generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
 import { getPassPoints } from '@/lib/points';
+import { ENV, resolveEnvId } from '@/lib/environments';
 import type { TaskTier } from '@/types';
 import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission-types';
 
@@ -28,7 +29,9 @@ interface BatchTestcaseItem {
 }
 
 export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<SubmissionResponseData> {
-  const { userId, taskSlug, code } = payload;
+  const { userId, taskSlug, code, envId: rawEnvId } = payload;
+  const envId = resolveEnvId(rawEnvId);
+  const envPrelude = ENV[envId].prelude;
 
   const validation = validateOneliner(code);
   if (!validation.valid) {
@@ -111,7 +114,8 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
     functionArgs,
     batchTestcases,
     constraints.allowed_imports || [],
-    marker
+    marker,
+    envPrelude
   );
 
   const runTimeout = Math.min(
@@ -137,6 +141,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       testcases: batchTestcases,
       allowedImports: constraints.allowed_imports || [],
       perTestTimeoutMs: Math.max(Number(constraints.timeout_ms || 2000), 1000),
+      prelude: envPrelude,
     });
   }
 
@@ -379,6 +384,7 @@ async function runPerTestFallback(params: {
   testcases: BatchTestcaseItem[];
   allowedImports: string[];
   perTestTimeoutMs: number;
+  prelude?: string;
 }): Promise<BatchExecutionResultItem[]> {
   const results: BatchExecutionResultItem[] = [];
 
@@ -387,7 +393,8 @@ async function runPerTestFallback(params: {
       params.code,
       params.functionArgs,
       testcase.args,
-      params.allowedImports
+      params.allowedImports,
+      params.prelude || ''
     );
 
     const timeout = Math.min(params.perTestTimeoutMs, 4000);
