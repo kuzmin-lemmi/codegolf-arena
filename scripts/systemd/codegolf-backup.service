@@ -1,0 +1,17 @@
+[Unit]
+Description=Codegolf Arena: резервная копия базы
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/codegolf-arena
+Environment=BACKUP_DIR=/home/deploy/backups
+Environment=BACKUP_KEEP_DAYS=14
+ExecStart=/usr/bin/env bash /home/deploy/codegolf-arena/scripts/backup-db.sh
+# Не даём бэкапу мешать сайту
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min

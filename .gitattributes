@@ -1,0 +1,7 @@
+# Скрипты и конфиги исполняются на Linux-сервере: только LF,
+# иначе bash падает с "bad interpreter: /usr/bin/env bash^M"
+* text=auto eol=lf
+*.sh text eol=lf
+*.mjs text eol=lf
+*.service text eol=lf
+*.timer text eol=lf

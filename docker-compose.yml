@@ -1,0 +1,47 @@
+# Локальное окружение для разработки: база + раннер кода.
+# Запуск:    docker compose up -d
+# Остановка: docker compose down        (данные сохраняются)
+# Снести всё вместе с данными: docker compose down -v
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: codegolf-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: codegolf
+      POSTGRES_PASSWORD: codegolf
+      POSTGRES_DB: codegolf
+    # Только с этого компьютера, наружу не торчит
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - codegolf-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codegolf -d codegolf"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  piston:
+    # Тот же раннер, что стоял на сервере
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: codegolf-piston
+    restart: unless-stopped
+    # Piston изолирует чужой код сам и без этого не работает
+    privileged: true
+    # ВАЖНО: только 127.0.0.1 — этот порт запускает произвольный код,
+    # его нельзя открывать в локальную сеть
+    ports:
+      - "127.0.0.1:2000:2000"
+    volumes:
+      - codegolf-piston-packages:/piston/packages
+    environment:
+      PISTON_RUN_TIMEOUT: 12000
+      PISTON_COMPILE_TIMEOUT: 12000
+      PISTON_OUTPUT_MAX_SIZE: 65536
+    mem_limit: 1g
+    pids_limit: 200
+
+volumes:
+  codegolf-db-data:
+  codegolf-piston-packages:

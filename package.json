@@ -22,7 +22,14 @@
     "db:tasks:cleanup": "npx tsx scripts/cleanup-duplicate-tasks.ts",
     "ops:preflight:postgres": "npx tsx scripts/preflight-postgres.ts",
     "ops:smoke": "npx tsx scripts/smoke-check.ts",
-    "ops:predeploy": "bash scripts/predeploy-check.sh"
+    "ops:predeploy": "bash scripts/predeploy-check.sh",
+    "ops:backup": "bash scripts/backup-db.sh",
+    "ops:backup:verify": "bash scripts/verify-backup.sh",
+    "ops:restore": "bash scripts/restore-db.sh",
+    "ops:env:check": "bash scripts/check-env.sh",
+    "dev:up": "docker compose up -d",
+    "dev:down": "docker compose down",
+    "dev:piston": "node scripts/install-piston-python.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

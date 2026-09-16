@@ -1,0 +1,12 @@
+[Unit]
+Description=Codegolf Arena: ежедневная резервная копия базы (03:30)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Если сервер был выключен — сделать копию сразу после включения
+Persistent=true
+RandomizedDelaySec=5min
+Unit=codegolf-backup.service
+
+[Install]
+WantedBy=timers.target
