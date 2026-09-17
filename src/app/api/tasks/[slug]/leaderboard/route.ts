@@ -53,6 +53,7 @@ export async function GET(
       rank: index + 1,
       userId: bs.user.id,
       nickname: bs.user.nickname || bs.user.displayName,
+      profileSlug: bs.user.nickname || bs.user.id,
       avatarUrl: bs.user.avatarUrl,
       codeLength: bs.codeLength,
       achievedAt: bs.achievedAt,

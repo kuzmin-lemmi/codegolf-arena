@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       rank: index + 1,
       userId: user.id,
       nickname: user.nickname || user.displayName,
+      profileSlug: user.nickname || user.id,
       avatarUrl: user.avatarUrl,
       points: user.totalPoints,
       tasksSolved: user._count.bestSubmissions,

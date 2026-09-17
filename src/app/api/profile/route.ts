@@ -70,11 +70,17 @@ export async function GET(request: NextRequest) {
         tasksSolved: user._count.bestSubmissions,
         totalSubmissions: user._count.submissions,
         bestRank,
+        charsSaved: solvedTasks.reduce(
+          (sum, bs) => sum + Math.max(0, (bs.firstLength ?? bs.codeLength) - bs.codeLength),
+          0
+        ),
         solvedTasks: solvedTasks.map((bs) => ({
           slug: bs.task.slug,
           title: bs.task.title,
           tier: bs.task.tier,
           length: bs.codeLength,
+          firstLength: bs.firstLength,
+          improveCount: bs.improveCount,
           achievedAt: bs.achievedAt,
         })),
       },
@@ -196,7 +202,7 @@ export async function PATCH(request: NextRequest) {
 async function getBestRank(userId: string): Promise<number | null> {
   // Один запрос вместо N+1: rank по каждой задаче и min(rank) для пользователя
   const rows = await prisma.$queryRaw<Array<{ bestRank: number | null }>>`
-    SELECT MIN(rnk) AS bestRank
+    SELECT MIN(rnk) AS "bestRank"
     FROM (
       SELECT
         user_id,

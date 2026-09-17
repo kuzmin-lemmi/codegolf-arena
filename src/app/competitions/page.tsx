@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Trophy, Calendar, Users, Clock, ArrowRight, Lock } from 'lucide-react';
 import { Card, Button, TierBadge } from '@/components/ui';
 import { prisma } from '@/lib/db';
-import { formatDate, formatTimeRemaining } from '@/lib/utils';
+import { formatDate, formatTimeRemaining, pluralizeRu } from '@/lib/utils';
 import type { TaskTier } from '@/types';
 import type { Metadata } from 'next';
 
@@ -18,11 +18,13 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
+type CompetitionState = 'running' | 'upcoming' | 'finished';
+
 async function getCompetitions() {
   try {
     const now = new Date();
 
-    // Активные соревнования
+    // Идут сейчас и запланированные
     const active = await prisma.competition.findMany({
       where: {
         isActive: true,
@@ -65,6 +67,7 @@ async function getCompetitions() {
 
 export default async function CompetitionsPage() {
   const { active, finished } = await getCompetitions();
+  const now = new Date();
 
   return (
     <div className="min-h-screen">
@@ -92,15 +95,27 @@ export default async function CompetitionsPage() {
           {active.length === 0 ? (
             <Card padding="lg" className="text-center">
               <Trophy className="w-12 h-12 mx-auto text-text-muted mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Нет активных соревнований</h3>
-              <p className="text-text-secondary">
-                Следите за анонсами! Скоро будут новые соревнования.
+              <h3 className="text-lg font-semibold mb-2">Сейчас соревнований нет</h3>
+              <p className="text-text-secondary mb-4">
+                Анонсы выходят в чате. А пока рекорды можно бить в обычных задачах — они идут в рейтинг.
               </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link href="/tasks">
+                  <Button variant="primary" size="sm">К задачам</Button>
+                </Link>
+                <a href="https://t.me/codegolf_arena" target="_blank" rel="noopener noreferrer">
+                  <Button variant="secondary" size="sm">Анонсы в Telegram</Button>
+                </a>
+              </div>
             </Card>
           ) : (
             <div className="grid gap-6">
               {active.map((comp) => (
-                <CompetitionCard key={comp.id} competition={comp} isActive />
+                <CompetitionCard
+                  key={comp.id}
+                  competition={comp}
+                  state={new Date(comp.startsAt) > now ? 'upcoming' : 'running'}
+                />
               ))}
             </div>
           )}
@@ -116,7 +131,7 @@ export default async function CompetitionsPage() {
 
             <div className="grid gap-4">
               {finished.map((comp) => (
-                <CompetitionCard key={comp.id} competition={comp} isActive={false} />
+                <CompetitionCard key={comp.id} competition={comp} state="finished" />
               ))}
             </div>
           </section>
@@ -126,28 +141,33 @@ export default async function CompetitionsPage() {
   );
 }
 
-function CompetitionCard({ 
-  competition, 
-  isActive 
-}: { 
-  competition: any; 
-  isActive: boolean; 
+function CompetitionCard({
+  competition,
+  state,
+}: {
+  competition: any;
+  state: CompetitionState;
 }) {
-  const timeRemaining = isActive 
-    ? formatTimeRemaining(new Date(competition.endsAt))
-    : null;
+  const isRunning = state === 'running';
+  const timeRemaining = isRunning ? formatTimeRemaining(new Date(competition.endsAt)) : null;
+  const participants: number = competition._count.entries;
 
   return (
-    <Card 
-      padding="lg" 
-      className={isActive ? 'border-tier-gold/30 bg-gradient-to-br from-tier-gold/5 to-transparent' : ''}
+    <Card
+      padding="lg"
+      className={isRunning ? 'border-tier-gold/30 bg-gradient-to-br from-tier-gold/5 to-transparent' : ''}
     >
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            {isActive && (
+            {isRunning && (
               <span className="px-2 py-0.5 bg-accent-green/20 text-accent-green text-xs font-medium rounded">
                 АКТИВНО
+              </span>
+            )}
+            {state === 'upcoming' && (
+              <span className="px-2 py-0.5 bg-accent-blue/20 text-accent-blue text-xs font-medium rounded">
+                СКОРО
               </span>
             )}
             <h3 className="text-xl font-bold">{competition.title}</h3>
@@ -160,8 +180,8 @@ function CompetitionCard({
           {/* Задачи */}
           <div className="flex flex-wrap gap-2 mb-3">
             {competition.tasks.map((ct: any) => (
-              <span 
-                key={ct.id} 
+              <span
+                key={ct.id}
                 className="inline-flex items-center gap-1.5 px-2 py-1 bg-background-tertiary rounded text-sm"
               >
                 <TierBadge tier={ct.task.tier as TaskTier} className="text-xs" />
@@ -174,13 +194,15 @@ function CompetitionCard({
           <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              {competition._count.entries} участников
+              {participants} {pluralizeRu(participants, ['участник', 'участника', 'участников'])}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {formatDate(competition.endsAt)}
+              {state === 'upcoming'
+                ? `старт ${formatDate(competition.startsAt)}`
+                : formatDate(competition.endsAt)}
             </span>
-            {isActive && timeRemaining && (
+            {isRunning && timeRemaining && (
               <span className="flex items-center gap-1 text-tier-gold font-medium">
                 <Clock className="w-4 h-4" />
                 Осталось: {timeRemaining}
@@ -190,10 +212,17 @@ function CompetitionCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          {isActive ? (
+          {isRunning ? (
             <Link href={`/competitions/${competition.id}`}>
               <Button variant="primary">
                 Участвовать
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          ) : state === 'upcoming' ? (
+            <Link href={`/competitions/${competition.id}`}>
+              <Button variant="secondary">
+                Посмотреть задачи
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
@@ -206,6 +235,13 @@ function CompetitionCard({
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </a>
+              ) : participants > 0 ? (
+                <Link href={`/competitions/${competition.id}`}>
+                  <Button variant="secondary">
+                    Итоги
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
               ) : (
                 <Button variant="ghost" disabled>
                   <Lock className="w-4 h-4" />

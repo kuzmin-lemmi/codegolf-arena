@@ -4,9 +4,20 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, pluralizeRu } from '@/lib/utils';
 import { LeaderboardTable, LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
-import { Lock, Code2, Trophy, Loader2, History, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import {
+  Lock,
+  Code2,
+  Trophy,
+  Loader2,
+  History,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  LogIn,
+  Scissors,
+} from 'lucide-react';
 import { Button } from '@/components/ui';
 
 interface TaskTabsProps {
@@ -14,6 +25,7 @@ interface TaskTabsProps {
   taskSlug: string;
   refreshKey?: number;
   currentUserRank?: number;
+  isLoggedIn?: boolean;
 }
 
 interface SolutionEntry {
@@ -26,7 +38,7 @@ interface SolutionEntry {
 
 type TabId = 'description' | 'leaderboard' | 'solutions' | 'attempts';
 
-interface SubmissionHistoryEntry {
+interface SubmissionAttempt {
   id: string;
   status: 'pending' | 'pass' | 'fail' | 'error';
   codeLength: number;
@@ -37,11 +49,32 @@ interface SubmissionHistoryEntry {
   createdAt: Date | string;
 }
 
+interface SubmissionRecord {
+  submissionId: string;
+  codeLength: number;
+  createdAt: Date | string;
+  savedChars: number | null;
+}
+
+interface SubmissionHistory {
+  attempts: SubmissionAttempt[];
+  records: SubmissionRecord[];
+  stats: {
+    attemptsTotal: number;
+    passesTotal: number;
+    firstLength: number | null;
+    bestLength: number | null;
+    totalSaved: number;
+    improvements: number;
+  };
+}
+
 export function TaskTabs({
   leaderboard,
   taskSlug,
   refreshKey,
   currentUserRank,
+  isLoggedIn = false,
 }: TaskTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('leaderboard');
   const [solutions, setSolutions] = useState<SolutionEntry[]>([]);
@@ -49,7 +82,7 @@ export function TaskTabs({
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyEntries, setHistoryEntries] = useState<SubmissionHistoryEntry[]>([]);
+  const [history, setHistory] = useState<SubmissionHistory | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,6 +124,12 @@ export function TaskTabs({
   }, [taskSlug, refreshKey]);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setHistory(null);
+      setHistoryError(null);
+      return;
+    }
+
     let isMounted = true;
 
     const fetchHistory = async () => {
@@ -102,16 +141,16 @@ export function TaskTabs({
         if (!isMounted) return;
 
         if (!json.success) {
-          setHistoryEntries([]);
+          setHistory(null);
           setHistoryError(json.error || 'Не удалось загрузить историю попыток');
           return;
         }
 
-        setHistoryEntries(json.data || []);
+        setHistory(json.data || null);
         setHistoryError(null);
       } catch {
         if (!isMounted) return;
-        setHistoryEntries([]);
+        setHistory(null);
         setHistoryError('Не удалось загрузить историю попыток');
       } finally {
         if (isMounted) {
@@ -125,7 +164,7 @@ export function TaskTabs({
     return () => {
       isMounted = false;
     };
-  }, [taskSlug, refreshKey]);
+  }, [taskSlug, refreshKey, isLoggedIn]);
 
   const tabs = [
     { id: 'leaderboard' as const, label: 'Лидерборд', icon: Trophy },
@@ -176,9 +215,11 @@ export function TaskTabs({
 
         {activeTab === 'attempts' && (
           <SubmissionHistoryContent
-            entries={historyEntries}
+            history={history}
             error={historyError}
             isLoading={historyLoading}
+            isLoggedIn={isLoggedIn}
+            taskSlug={taskSlug}
           />
         )}
       </div>
@@ -187,14 +228,37 @@ export function TaskTabs({
 }
 
 function SubmissionHistoryContent({
-  entries,
+  history,
   error,
   isLoading,
+  isLoggedIn,
+  taskSlug,
 }: {
-  entries: SubmissionHistoryEntry[];
+  history: SubmissionHistory | null;
   error: string | null;
   isLoading: boolean;
+  isLoggedIn: boolean;
+  taskSlug: string;
 }) {
+  if (!isLoggedIn) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+          <LogIn className="w-8 h-8 text-text-muted" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">История попыток — для своих</h3>
+        <p className="text-text-secondary max-w-sm mb-4">
+          Войди, и здесь будет видно, как твой рекорд по задаче становится короче.
+        </p>
+        <Link href={`/auth?returnTo=${encodeURIComponent(`/task/${taskSlug}`)}`}>
+          <Button variant="primary" size="sm">
+            Войти
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -219,7 +283,9 @@ function SubmissionHistoryContent({
     );
   }
 
-  if (entries.length === 0) {
+  const attempts = history?.attempts || [];
+
+  if (attempts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
@@ -232,33 +298,93 @@ function SubmissionHistoryContent({
   }
 
   return (
-    <div className="space-y-3">
-      {entries.map((entry) => (
-        <div key={entry.id} className="p-3 rounded-lg border border-border bg-background-tertiary/40">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              {entry.status === 'pass' ? (
-                <CheckCircle2 className="w-4 h-4 text-accent-green" />
-              ) : entry.status === 'fail' ? (
-                <XCircle className="w-4 h-4 text-accent-red" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-accent-yellow" />
-              )}
-              <span className="font-medium uppercase">{entry.status}</span>
-              <span className="text-text-muted">{new Date(entry.createdAt).toLocaleString('ru-RU')}</span>
-            </div>
-            <span className="font-mono text-accent-blue">{entry.codeLength} симв.</span>
-          </div>
+    <div className="space-y-4">
+      {history && history.records.length > 0 && <RecordProgress history={history} />}
 
-          <div className="mt-2 text-xs text-text-secondary flex flex-wrap gap-3">
-            <span>
-              Тесты: {entry.testsPassed}/{entry.testsTotal}
-            </span>
-            {entry.runtimeMs !== null && <span>Время: {entry.runtimeMs} мс</span>}
-            {entry.errorMessage && <span className="text-accent-red">{entry.errorMessage}</span>}
+      <div className="space-y-3">
+        {attempts.map((entry) => (
+          <div key={entry.id} className="p-3 rounded-lg border border-border bg-background-tertiary/40">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm">
+                {entry.status === 'pass' ? (
+                  <CheckCircle2 className="w-4 h-4 text-accent-green" />
+                ) : entry.status === 'fail' ? (
+                  <XCircle className="w-4 h-4 text-accent-red" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-accent-yellow" />
+                )}
+                <span className="font-medium uppercase">{entry.status}</span>
+                <span className="text-text-muted">{new Date(entry.createdAt).toLocaleString('ru-RU')}</span>
+              </div>
+              <span className="font-mono text-accent-blue">{entry.codeLength} симв.</span>
+            </div>
+
+            <div className="mt-2 text-xs text-text-secondary flex flex-wrap gap-3">
+              <span>
+                Тесты: {entry.testsPassed}/{entry.testsTotal}
+              </span>
+              {entry.runtimeMs !== null && <span>Время: {entry.runtimeMs} мс</span>}
+              {entry.errorMessage && <span className="text-accent-red">{entry.errorMessage}</span>}
+            </div>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * «Было 47 → 38 → 31»: видно собственный прогресс по задаче.
+ */
+function RecordProgress({ history }: { history: SubmissionHistory }) {
+  const { records, stats } = history;
+
+  return (
+    <div className="rounded-lg border border-accent-green/30 bg-accent-green/5 p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Scissors className="w-4 h-4 text-accent-green" />
+          Твой прогресс по задаче
         </div>
-      ))}
+        {stats.totalSaved > 0 && (
+          <div className="text-xs text-text-secondary">
+            срезано{' '}
+            <span className="font-mono font-bold text-accent-green">{stats.totalSaved}</span>{' '}
+            {pluralizeRu(stats.totalSaved, ['символ', 'символа', 'символов'])} за {stats.improvements}{' '}
+            {pluralizeRu(stats.improvements, ['улучшение', 'улучшения', 'улучшений'])}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+        {records.map((record, index) => (
+          <div key={record.submissionId} className="flex items-center gap-1.5">
+            {index > 0 && <span className="text-text-muted">→</span>}
+            <span
+              className={cn(
+                'inline-flex flex-col items-center px-2 py-1 rounded-md border font-mono',
+                index === records.length - 1
+                  ? 'border-accent-green/60 bg-accent-green/10 text-accent-green font-bold'
+                  : 'border-border bg-background-tertiary/60 text-text-secondary'
+              )}
+              title={new Date(record.createdAt).toLocaleString('ru-RU')}
+            >
+              <span className="text-sm">{record.codeLength}</span>
+              {record.savedChars ? (
+                <span className="text-[10px] text-text-muted">−{record.savedChars}</span>
+              ) : (
+                <span className="text-[10px] text-text-muted">старт</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {stats.totalSaved === 0 && records.length === 1 && (
+        <p className="mt-3 text-xs text-text-secondary">
+          Рекорд поставлен. Теперь самое интересное — укоротить его: за это дают очки.
+        </p>
+      )}
     </div>
   );
 }

@@ -136,3 +136,19 @@ export function calculateCodeLength(code: string): number {
   // Считаем ВСЕ символы включая пробелы внутри
   return trimmed.length;
 }
+
+/**
+ * Русские формы числительных: pluralizeRu(5, ['задача', 'задачи', 'задач'])
+ */
+export function pluralizeRu(count: number, forms: readonly string[]): string {
+  const [one = '', few = '', many = ''] = forms;
+  const abs = Math.abs(Math.trunc(count));
+  const mod100 = abs % 100;
+  const mod10 = abs % 10;
+
+  if (mod100 > 10 && mod100 < 20) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+

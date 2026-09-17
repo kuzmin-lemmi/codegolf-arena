@@ -192,6 +192,22 @@ export default function RulesPage() {
                 <hr className="border-border" />
                 <PointRow label="Стал #1 по задаче" points="+25" highlight />
               </div>
+
+              <div className="mt-6 space-y-2 text-sm text-text-secondary">
+                <p>
+                  Улучшение считается от твоего же прошлого рекорда по задаче: отправил решение
+                  короче — сразу получил очки.
+                </p>
+                <p>
+                  Чтобы очки нельзя было набить, отправив раздутое решение и срезая по одному
+                  символу, сумма очков за улучшения в одной задаче ограничена:{' '}
+                  <span className="text-text-primary">20 очков в Bronze, 40 в Silver, 60 в Gold</span>.
+                </p>
+                <p>
+                  Бонус за первое место начисляется один раз на задачу — даже если рекорд у тебя
+                  потом отберут и ты вернёшь его обратно.
+                </p>
+              </div>
             </Card>
           </section>
 

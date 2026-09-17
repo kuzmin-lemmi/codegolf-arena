@@ -163,11 +163,14 @@ export interface UserProfile {
   tasksSolved: number;
   totalSubmissions: number;
   bestRank: number | null;
+  charsSaved: number;
   solvedTasks: Array<{
     slug: string;
     title: string;
     tier: 'bronze' | 'silver' | 'gold';
     length: number;
+    firstLength: number | null;
+    improveCount: number;
     achievedAt: string;
   }>;
 }

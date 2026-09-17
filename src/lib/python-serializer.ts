@@ -48,44 +48,88 @@ export function toPythonLiteral(value: unknown): string {
   return String(value);
 }
 
-function buildAstSecurityPrelude(userCode: string): string {
-  const sourceLiteral = toPythonLiteral(userCode);
+/**
+ * Служебный префикс внутренних имён раннера. Привязан к случайному маркеру
+ * отправки, поэтому решение не может обратиться к ним наугад.
+ */
+function arenaPrefix(marker?: string): string {
+  return `_arena_${marker || 'local'}_`;
+}
 
-  return `import ast
+/**
+ * Проверка исходника решения по AST: запрещаем опасные имена и любые
+ * dunder-атрибуты. Это дополнительный слой поверх изоляции окружения,
+ * а не замена ей.
+ */
+function buildAstGuard(p: string, userCode: string): string {
+  return `import ast as ${p}ast
 
-_arena_source = ${sourceLiteral}
-_arena_blocked_names = {
+${p}src = ${toPythonLiteral(userCode)}
+${p}blocked_names = {
     "__import__", "eval", "exec", "compile", "open", "input", "breakpoint", "help",
     "globals", "locals", "vars", "dir", "getattr", "setattr", "delattr", "__builtins__"
 }
-_arena_blocked_calls = {
+${p}blocked_calls = {
     "__import__", "eval", "exec", "compile", "open", "input", "breakpoint", "help",
     "globals", "locals", "vars", "dir", "getattr", "setattr", "delattr"
 }
 
-def _arena_validate_ast(expr: str) -> None:
-    tree = ast.parse(expr, mode="eval")
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name):
-            if node.id in _arena_blocked_names:
+def ${p}validate(expr):
+    tree = ${p}ast.parse(expr, mode="eval")
+    for node in ${p}ast.walk(tree):
+        if isinstance(node, ${p}ast.Name):
+            if node.id in ${p}blocked_names:
                 raise ValueError(f"Blocked name: {node.id}")
             if node.id.startswith("__") and node.id.endswith("__"):
                 raise ValueError(f"Blocked dunder name: {node.id}")
-        elif isinstance(node, ast.Attribute):
+        elif isinstance(node, ${p}ast.Attribute):
             if node.attr.startswith("__") and node.attr.endswith("__"):
                 raise ValueError(f"Blocked dunder attribute: {node.attr}")
-        elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in _arena_blocked_calls:
+        elif isinstance(node, ${p}ast.Call):
+            if isinstance(node.func, ${p}ast.Name) and node.func.id in ${p}blocked_calls:
                 raise ValueError(f"Blocked call: {node.func.id}")
-
-_arena_validate_ast(_arena_source)
 `;
 }
 
 /**
- * Генерирует полный Python код для выполнения теста.
- * @param prelude — доверенный код окружения (из ENV[envId].prelude), вставляется до всего остального.
- *                  Пользователь импорт не пишет — окружение подключает инструменты.
+ * Собирает решение в ОТДЕЛЬНОМ пространстве имён: только встроенные функции
+ * и prelude окружения.
+ *
+ * Это ключевое место для честности проверки. Решение определяется через exec
+ * с собственным словарём globals, поэтому у него нет доступа ни к данным
+ * тестов, ни к служебным переменным раннера: ни через globals, ни через
+ * замыкание. Никогда не переносите данные тестов в модульную область —
+ * тогда решение сможет просто прочитать правильный ответ.
+ */
+function buildSolutionFactory(p: string, functionArgs: string[], preludeSource: string): string {
+  const header = `def solution(${functionArgs.join(', ')}):\n    return `;
+
+  return `${p}prelude = ${toPythonLiteral(preludeSource)}
+${p}def_src = ${toPythonLiteral(header)} + ${p}src
+
+def ${p}build_solution():
+    ${p}validate(${p}src)
+    ${p}ns = {}
+    exec(${p}prelude, ${p}ns)
+    exec(${p}def_src, ${p}ns)
+    return ${p}ns["solution"]
+`;
+}
+
+/** Prelude окружения + старый путь через allowed_imports (совместимость) */
+function buildPreludeSource(prelude: string, allowedImports: string[]): string {
+  const parts: string[] = [];
+  if (prelude) parts.push(prelude);
+  if (allowedImports.length > 0) {
+    parts.push(allowedImports.map((m) => `import ${m}`).join('\n'));
+  }
+  return parts.join('\n');
+}
+
+/**
+ * Генерирует Python-код для прогона решения на одном тесте.
+ * Правильный ответ в этот код не попадает — сравнение делает вызывающая сторона.
+ * @param prelude — доверенный код окружения (из ENV[envId].prelude).
  */
 export function generateTestCode(
   userCode: string,
@@ -94,26 +138,18 @@ export function generateTestCode(
   allowedImports: string[] = [],
   prelude: string = ''
 ): string {
-  // Prelude окружения (math, functools, itertools, re...) — доверенный, не фильтруется
-  const envPrelude = prelude ? prelude + '\n' : '';
-  // Старый путь через allowedImports оставлен для обратной совместимости
-  const imports = allowedImports.length > 0
-    ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
-    : '';
-  const astSecurityPrelude = buildAstSecurityPrelude(userCode);
-
-  // Аргументы функции
-  const argsStr = functionArgs.join(', ');
-
-  // Тестовые аргументы в Python формате
+  const p = arenaPrefix();
   const testArgsStr = testArgs.map(toPythonLiteral).join(', ');
 
-  return `${envPrelude}${imports}${astSecurityPrelude}
+  return `${buildAstGuard(p, userCode)}
+${buildSolutionFactory(p, functionArgs, buildPreludeSource(prelude, allowedImports))}
 
-def solution(${argsStr}):
-    return ${userCode}
+def ${p}main():
+    ${p}fn = ${p}build_solution()
+    ${p}output = ${p}fn(${testArgsStr})
+    print('' if ${p}output is None else ${p}output)
 
-print(solution(${testArgsStr}))
+${p}main()
 `;
 }
 
@@ -125,9 +161,14 @@ interface BatchTestcaseInput {
 }
 
 /**
- * Генерирует Python код для прогона всех тестов за один запуск.
- * marker — уникальный секретный маркер для защиты от подделки вывода пользователем.
- * prelude — доверенный код окружения (из ENV[envId].prelude), вставляется первым.
+ * Генерирует Python-код для прогона всех тестов за один запуск.
+ *
+ * marker — случайный секрет отправки: им помечается блок вывода, чтобы решение
+ * не могло подделать результат, и им же разведены служебные имена.
+ * prelude — доверенный код окружения (из ENV[envId].prelude).
+ *
+ * Данные тестов лежат в локальной переменной функции, а не в модульной области,
+ * поэтому решение их не видит (см. buildSolutionFactory).
  */
 export function generateBatchTestCode(
   userCode: string,
@@ -137,65 +178,79 @@ export function generateBatchTestCode(
   marker?: string,
   prelude: string = ''
 ): string {
-  // Prelude окружения — доверенный, вставляется до всего остального
-  const envPrelude = prelude ? prelude + '\n' : '';
-  const imports = allowedImports.length > 0
-    ? allowedImports.map((m) => `import ${m}`).join('\n') + '\n\n'
-    : '';
+  const p = arenaPrefix(marker);
+  const startMarker = marker ? `__ARENA_${marker}_START__` : '__ARENA_JSON_START__';
+  const endMarker = marker ? `__ARENA_${marker}_END__` : '__ARENA_JSON_END__';
 
-  const argsStr = functionArgs.join(', ');
   const testsLiteral = testcases
     .map((test) => {
       const argsLiteral = `[${test.args.map(toPythonLiteral).join(', ')}]`;
-      return `{"index": ${test.index}, "args": ${argsLiteral}, "expected": ${toPythonLiteral(test.expectedOutput.trim())}, "hidden": ${test.isHidden ? 'True' : 'False'}}`;
+      return `{"index": ${test.index}, "args": ${argsLiteral}, "expected": ${toPythonLiteral(
+        test.expectedOutput.trim()
+      )}, "hidden": ${test.isHidden ? 'True' : 'False'}}`;
     })
-    .join(',\n    ');
+    .join(',\n        ');
 
-  // Используем переданный маркер или fallback (для обратной совместимости с Pyodide)
-  const startMarker = marker ? `__ARENA_${marker}_START__` : '__ARENA_JSON_START__';
-  const endMarker = marker ? `__ARENA_${marker}_END__` : '__ARENA_JSON_END__';
-  const astSecurityPrelude = buildAstSecurityPrelude(userCode);
+  return `import json
 
-  return `${envPrelude}${imports}import json
+${buildAstGuard(p, userCode)}
+${buildSolutionFactory(p, functionArgs, buildPreludeSource(prelude, allowedImports))}
 
-${astSecurityPrelude}
+def ${p}emit(results):
+    print("${startMarker}")
+    print(json.dumps({"results": results}, ensure_ascii=False))
+    print("${endMarker}")
 
-def solution(${argsStr}):
-    return ${userCode}
+def ${p}main():
+    # tests и results — локальные переменные: из решения их не видно
+    tests = [
+        ${testsLiteral}
+    ]
+    results = []
 
-tests = [
-    ${testsLiteral}
-]
-
-results = []
-for test in tests:
     try:
-        output = solution(*test["args"])
-        actual = '' if output is None else str(output).strip()
-        expected = str(test["expected"]).strip()
-        passed = actual == expected
-        results.append({
-            "index": test["index"],
-            "passed": passed,
-            "isHidden": test["hidden"],
-            "actual": actual if not test["hidden"] else None,
-            "expected": expected if not test["hidden"] else None,
-            "error": None,
-        })
+        fn = ${p}build_solution()
     except Exception as exc:
-        results.append({
-            "index": test["index"],
-            "passed": False,
-            "isHidden": test["hidden"],
-            "actual": None,
-            "expected": None,
-            "error": f"{type(exc).__name__}: {exc}",
-        })
+        for test in tests:
+            results.append({
+                "index": test["index"],
+                "passed": False,
+                "isHidden": test["hidden"],
+                "actual": None,
+                "expected": None,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+        ${p}emit(results)
+        return
 
-payload = {"results": results}
-print("${startMarker}")
-print(json.dumps(payload, ensure_ascii=False))
-print("${endMarker}")
+    for test in tests:
+        try:
+            output = fn(*test["args"])
+            actual = '' if output is None else str(output).strip()
+            expected = str(test["expected"]).strip()
+            results.append({
+                "index": test["index"],
+                "passed": actual == expected,
+                "isHidden": test["hidden"],
+                "actual": None if test["hidden"] else actual,
+                "expected": None if test["hidden"] else expected,
+                "error": None,
+            })
+        except Exception as exc:
+            # У скрытых тестов отдаём только тип ошибки: её текст может
+            # содержать значения из теста
+            results.append({
+                "index": test["index"],
+                "passed": False,
+                "isHidden": test["hidden"],
+                "actual": None,
+                "expected": None,
+                "error": type(exc).__name__ if test["hidden"] else f"{type(exc).__name__}: {exc}",
+            })
+
+    ${p}emit(results)
+
+${p}main()
 `;
 }
 

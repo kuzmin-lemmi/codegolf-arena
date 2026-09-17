@@ -6,12 +6,20 @@ export interface SubmissionResponseData {
   testsTotal: number;
   place: number | null;
   isNewBest: boolean;
+  // Личный рекорд до этой отправки (null, если задача решена впервые)
+  previousBestLength: number | null;
+  // На сколько символов улучшен личный рекорд этой отправкой
+  improvedBy: number | null;
+  // Ник игрока, у которого этой отправкой забрали первое место
+  tookFirstPlaceFrom: string | null;
   pointsEarned: number;
   pointsBreakdown: string[];
   errorMessage: string | null;
   details: Array<{
     index: number;
     passed: boolean;
+    // У скрытых тестов наружу уходит только факт прохождения
+    isHidden?: boolean;
     input?: string;
     expected?: string;
     actual?: string;

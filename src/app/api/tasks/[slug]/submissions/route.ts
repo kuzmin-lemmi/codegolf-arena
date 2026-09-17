@@ -1,6 +1,11 @@
+// src/app/api/tasks/[slug]/submissions/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+
+const MAX_ATTEMPTS = 30;
+const MAX_PASSES_FOR_HISTORY = 500;
 
 export async function GET(
   request: NextRequest,
@@ -22,37 +27,94 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
     }
 
-    const submissions = await prisma.submission.findMany({
-      where: {
-        taskId: task.id,
-        userId: currentUser.id,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 30,
-      select: {
-        id: true,
-        status: true,
-        codeLength: true,
-        testsPassed: true,
-        testsTotal: true,
-        runtimeMs: true,
-        errorMsg: true,
-        createdAt: true,
-      },
-    });
+    const [submissions, passes, totals] = await Promise.all([
+      prisma.submission.findMany({
+        where: {
+          taskId: task.id,
+          userId: currentUser.id,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_ATTEMPTS,
+        select: {
+          id: true,
+          status: true,
+          codeLength: true,
+          testsPassed: true,
+          testsTotal: true,
+          runtimeMs: true,
+          errorMsg: true,
+          createdAt: true,
+        },
+      }),
+      // Зачтённые попытки по порядку: из них собираем цепочку личных рекордов
+      prisma.submission.findMany({
+        where: {
+          taskId: task.id,
+          userId: currentUser.id,
+          status: 'pass',
+        },
+        orderBy: { createdAt: 'asc' },
+        take: MAX_PASSES_FOR_HISTORY,
+        select: {
+          id: true,
+          codeLength: true,
+          createdAt: true,
+        },
+      }),
+      prisma.submission.count({
+        where: { taskId: task.id, userId: currentUser.id },
+      }),
+    ]);
+
+    // «Было 47 -> 38 -> 31»: оставляем только те попытки, которые улучшали рекорд
+    const records: Array<{
+      submissionId: string;
+      codeLength: number;
+      createdAt: Date;
+      savedChars: number | null;
+    }> = [];
+
+    let runningBest: number | null = null;
+    for (const pass of passes) {
+      if (runningBest === null || pass.codeLength < runningBest) {
+        records.push({
+          submissionId: pass.id,
+          codeLength: pass.codeLength,
+          createdAt: pass.createdAt,
+          savedChars: runningBest === null ? null : runningBest - pass.codeLength,
+        });
+        runningBest = pass.codeLength;
+      }
+    }
+
+    const firstLength = records.length > 0 ? records[0].codeLength : null;
+    const bestLength = records.length > 0 ? records[records.length - 1].codeLength : null;
 
     return NextResponse.json({
       success: true,
-      data: submissions.map((submission) => ({
-        id: submission.id,
-        status: submission.status,
-        codeLength: submission.codeLength,
-        testsPassed: submission.testsPassed,
-        testsTotal: submission.testsTotal,
-        runtimeMs: submission.runtimeMs,
-        errorMessage: submission.errorMsg,
-        createdAt: submission.createdAt,
-      })),
+      data: {
+        attempts: submissions.map((submission) => ({
+          id: submission.id,
+          status: submission.status,
+          codeLength: submission.codeLength,
+          testsPassed: submission.testsPassed,
+          testsTotal: submission.testsTotal,
+          runtimeMs: submission.runtimeMs,
+          errorMessage: submission.errorMsg,
+          createdAt: submission.createdAt,
+        })),
+        records,
+        stats: {
+          attemptsTotal: totals,
+          passesTotal: passes.length,
+          firstLength,
+          bestLength,
+          // Сколько символов срезано с первого зачтённого решения
+          totalSaved:
+            firstLength !== null && bestLength !== null ? firstLength - bestLength : 0,
+          improvements: Math.max(0, records.length - 1),
+        },
+      },
     });
   } catch (error) {
     console.error('Error fetching submission history:', error);

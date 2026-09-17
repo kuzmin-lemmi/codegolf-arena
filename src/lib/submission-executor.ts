@@ -4,7 +4,9 @@ import { prisma } from '@/lib/db';
 import { calculateCodeLength, validateOneliner } from '@/lib/utils';
 import { executeCode } from '@/lib/piston';
 import { generateBatchTestCode, generateTestCode, toPythonLiteral } from '@/lib/python-serializer';
-import { getPassPoints } from '@/lib/points';
+import { awardImprovementPoints, getFirstPlacePoints, getPassPoints } from '@/lib/points';
+import { notifyRecordBeaten } from '@/lib/notifications';
+import { syncCompetitionEntriesForTask } from '@/lib/competitions';
 import { ENV, resolveEnvId } from '@/lib/environments';
 import type { TaskTier } from '@/types';
 import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission-types';
@@ -43,6 +45,9 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       testsTotal: 0,
       place: null,
       isNewBest: false,
+      previousBestLength: null,
+      improvedBy: null,
+      tookFirstPlaceFrom: null,
       pointsEarned: 0,
       pointsBreakdown: [],
       errorMessage: validation.error || 'Invalid code',
@@ -68,6 +73,9 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       testsTotal: 0,
       place: null,
       isNewBest: false,
+      previousBestLength: null,
+      improvedBy: null,
+      tookFirstPlaceFrom: null,
       pointsEarned: 0,
       pointsBreakdown: [],
       errorMessage: 'Task not found',
@@ -89,6 +97,9 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
         testsTotal: task.testcases.length,
         place: null,
         isNewBest: false,
+        previousBestLength: null,
+        improvedBy: null,
+        tookFirstPlaceFrom: null,
         pointsEarned: 0,
         pointsBreakdown: [],
         errorMessage: `Запрещённый токен: ${token}`,
@@ -105,7 +116,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
       index: testcase.orderIndex,
       args: Array.isArray(inputData.args) ? inputData.args : [],
       expectedOutput: testcase.expectedOutput,
-      isHidden: false,
+      isHidden: testcase.isHidden,
     };
   });
 
@@ -147,12 +158,27 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
 
   const testResults = parsedResults.map((item) => {
     const source = batchTestcases.find((t) => t.index === item.index);
-    const input = (source?.args || []).map(toPythonLiteral).join(', ');
+    const isHidden = source?.isHidden ?? item.isHidden ?? false;
+
+    // По скрытым тестам игрок видит только факт прохождения: ни аргументы,
+    // ни ожидаемый ответ, ни текст ошибки (в нём могут быть значения теста)
+    if (isHidden) {
+      return {
+        index: item.index,
+        passed: item.passed,
+        isHidden: true,
+        input: undefined,
+        expected: undefined,
+        actual: undefined,
+        error: item.error || null,
+      };
+    }
+
     return {
       index: item.index,
       passed: item.passed,
       isHidden: false,
-      input,
+      input: (source?.args || []).map(toPythonLiteral).join(', '),
       expected: item.expected ?? undefined,
       actual: item.actual ?? undefined,
       error: item.error || null,
@@ -181,138 +207,267 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
   const testsPassed = testResults.filter((t) => t.passed).length;
   const testsTotal = batchTestcases.length;
 
-  const transactionResult = await prisma.$transaction(async (tx) => {
-    const submission = await tx.submission.create({
-      data: {
-        taskId: task.id,
-        userId,
-        code,
-        codeLength,
-        status,
-        testsPassed,
-        testsTotal,
-        runtimeMs,
-        errorMsg: submissionError,
-      },
-    });
-
-    let txIsNewBest = false;
-    let txPointsEarned = 0;
-    const txPointsBreakdown: string[] = [];
-    let txPlace: number | null = null;
-    let awardedFirstPassPoints = false;
-
-    if (status === 'pass') {
-      const existingBest = await tx.bestSubmission.findUnique({
-        where: {
-          taskId_userId: {
-            taskId: task.id,
-            userId,
-          },
-        },
-        select: {
-          codeLength: true,
+  const transactionResult = await prisma.$transaction(
+    async (tx) => {
+      const submission = await tx.submission.create({
+        data: {
+          taskId: task.id,
+          userId,
+          code,
+          codeLength,
+          status,
+          testsPassed,
+          testsTotal,
+          runtimeMs,
+          errorMsg: submissionError,
         },
       });
 
-      let currentBestLength: number | null = existingBest?.codeLength ?? null;
+      let txIsNewBest = false;
+      let txPointsEarned = 0;
+      const txPointsBreakdown: string[] = [];
+      let txPlace: number | null = null;
+      let txPreviousBestLength: number | null = null;
+      let txImprovedBy: number | null = null;
+      let txTookFirstPlaceFrom: string | null = null;
+      let txDethroned: { userId: string; previousLength: number } | null = null;
+      let awardedFirstPassPoints = false;
+      const tier = task.tier as TaskTier;
 
-      if (currentBestLength === null) {
-        try {
-          await tx.bestSubmission.create({
-            data: {
-              taskId: task.id,
-              userId,
-              submissionId: submission.id,
-              codeLength,
-              achievedAt: new Date(),
-            },
-          });
+      if (status === 'pass') {
+        // Кто держал первое место до этой отправки: ему уйдёт «твой рекорд побили»
+        const leaderBefore = await tx.bestSubmission.findFirst({
+          where: { taskId: task.id },
+          orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }, { userId: 'asc' }],
+          select: {
+            userId: true,
+            codeLength: true,
+            user: { select: { nickname: true, displayName: true } },
+          },
+        });
 
-          currentBestLength = codeLength;
-          txIsNewBest = true;
-          awardedFirstPassPoints = true;
-        } catch (error) {
-          if (
-            !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-            error.code !== 'P2002'
-          ) {
-            throw error;
-          }
-
-          const racedBest = await tx.bestSubmission.findUnique({
-            where: {
-              taskId_userId: {
-                taskId: task.id,
-                userId,
-              },
-            },
-            select: {
-              codeLength: true,
-            },
-          });
-          currentBestLength = racedBest?.codeLength ?? null;
-        }
-      }
-
-      if (currentBestLength !== null && codeLength < currentBestLength) {
-        await tx.bestSubmission.update({
+        const existingBest = await tx.bestSubmission.findUnique({
           where: {
             taskId_userId: {
               taskId: task.id,
               userId,
             },
           },
-          data: {
-            submissionId: submission.id,
-            codeLength,
-            achievedAt: new Date(),
+          select: {
+            codeLength: true,
+            firstLength: true,
+            improvePoints: true,
+            firstPlaceAwarded: true,
           },
         });
-        txIsNewBest = true;
-      }
 
-      const ranks = await tx.$queryRaw<Array<{ place: bigint }>>`
-        SELECT rnk AS place
-        FROM (
-          SELECT
-            task_id,
-            user_id,
-            ROW_NUMBER() OVER (
-              PARTITION BY task_id
-              ORDER BY code_length ASC, achieved_at ASC, user_id ASC
-            ) AS rnk
-          FROM best_submissions
-        ) ranked
-        WHERE task_id = ${task.id} AND user_id = ${userId}
-      `;
+        let bestRow = existingBest;
+        let currentBestLength: number | null = existingBest?.codeLength ?? null;
+        txPreviousBestLength = currentBestLength;
 
-      const rawPlace = ranks?.[0]?.place;
-      txPlace = rawPlace === undefined || rawPlace === null ? null : Number(rawPlace);
+        if (currentBestLength === null) {
+          try {
+            bestRow = await tx.bestSubmission.create({
+              data: {
+                taskId: task.id,
+                userId,
+                submissionId: submission.id,
+                codeLength,
+                achievedAt: new Date(),
+                firstLength: codeLength,
+              },
+              select: {
+                codeLength: true,
+                firstLength: true,
+                improvePoints: true,
+                firstPlaceAwarded: true,
+              },
+            });
 
-      if (awardedFirstPassPoints) {
-        txPointsEarned = getPassPoints(task.tier as TaskTier);
-        txPointsBreakdown.push(`PASS (${task.tier}): +${txPointsEarned}`);
+            currentBestLength = codeLength;
+            txIsNewBest = true;
+            awardedFirstPassPoints = true;
+          } catch (error) {
+            if (
+              !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+              error.code !== 'P2002'
+            ) {
+              throw error;
+            }
 
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            totalPoints: {
-              increment: txPointsEarned,
+            const racedBest = await tx.bestSubmission.findUnique({
+              where: {
+                taskId_userId: {
+                  taskId: task.id,
+                  userId,
+                },
+              },
+              select: {
+                codeLength: true,
+                firstLength: true,
+                improvePoints: true,
+                firstPlaceAwarded: true,
+              },
+            });
+            bestRow = racedBest;
+            currentBestLength = racedBest?.codeLength ?? null;
+            txPreviousBestLength = currentBestLength;
+          }
+        }
+
+        // Суть игры — укоротить своё же решение. Именно за это и платим очками.
+        if (currentBestLength !== null && codeLength < currentBestLength) {
+          const savedChars = currentBestLength - codeLength;
+          const award = awardImprovementPoints({
+            tier,
+            savedChars,
+            alreadyAwarded: bestRow?.improvePoints ?? 0,
+          });
+
+          bestRow = await tx.bestSubmission.update({
+            where: {
+              taskId_userId: {
+                taskId: task.id,
+                userId,
+              },
             },
-          },
-        });
-      }
-    }
+            data: {
+              submissionId: submission.id,
+              codeLength,
+              achievedAt: new Date(),
+              improveCount: { increment: 1 },
+              improvePoints: { increment: award.points },
+              // У записей, созданных до этого этапа, поля нет — заполняем на первом улучшении
+              firstLength: bestRow?.firstLength ?? currentBestLength,
+            },
+            select: {
+              codeLength: true,
+              firstLength: true,
+              improvePoints: true,
+              firstPlaceAwarded: true,
+            },
+          });
 
-    return {
-      submissionId: submission.id,
-      isNewBest: txIsNewBest,
-      pointsEarned: txPointsEarned,
-      pointsBreakdown: txPointsBreakdown,
-      place: txPlace,
-    };
-  });
+          txIsNewBest = true;
+          txImprovedBy = savedChars;
+
+          if (award.points > 0) {
+            txPointsEarned += award.points;
+            txPointsBreakdown.push(
+              `Короче на ${savedChars} симв.: +${award.points}` +
+                (award.capped ? ` (лимит ${award.cap} на задачу)` : '')
+            );
+          } else if (award.rawPoints > 0) {
+            txPointsBreakdown.push(
+              `Короче на ${savedChars} симв.: лимит очков за улучшения по задаче исчерпан (${award.cap})`
+            );
+          }
+        }
+
+        const ranks = await tx.$queryRaw<Array<{ place: bigint }>>`
+          SELECT rnk AS place
+          FROM (
+            SELECT
+              task_id,
+              user_id,
+              ROW_NUMBER() OVER (
+                PARTITION BY task_id
+                ORDER BY code_length ASC, achieved_at ASC, user_id ASC
+              ) AS rnk
+            FROM best_submissions
+          ) ranked
+          WHERE task_id = ${task.id} AND user_id = ${userId}
+        `;
+
+        const rawPlace = ranks?.[0]?.place;
+        txPlace = rawPlace === undefined || rawPlace === null ? null : Number(rawPlace);
+
+        if (awardedFirstPassPoints) {
+          const passPoints = getPassPoints(tier);
+          txPointsEarned += passPoints;
+          txPointsBreakdown.push(`PASS (${task.tier}): +${passPoints}`);
+        }
+
+        // Бонус за первый выход на #1 — один раз на задачу, иначе его можно качать по кругу
+        if (txPlace === 1 && bestRow && !bestRow.firstPlaceAwarded) {
+          const firstPlacePoints = getFirstPlacePoints();
+          txPointsEarned += firstPlacePoints;
+          txPointsBreakdown.push(`Первое место по задаче: +${firstPlacePoints}`);
+
+          await tx.bestSubmission.update({
+            where: {
+              taskId_userId: {
+                taskId: task.id,
+                userId,
+              },
+            },
+            data: { firstPlaceAwarded: true },
+          });
+        }
+
+        if (txPointsEarned > 0) {
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              totalPoints: {
+                increment: txPointsEarned,
+              },
+            },
+          });
+        }
+
+        // Само уведомление отправляем после коммита: оно не должно
+        // ронять зачтённую отправку, если запись в notifications не удалась
+        if (leaderBefore && leaderBefore.userId !== userId && codeLength < leaderBefore.codeLength) {
+          txTookFirstPlaceFrom = leaderBefore.user.nickname || leaderBefore.user.displayName;
+          txDethroned = {
+            userId: leaderBefore.userId,
+            previousLength: leaderBefore.codeLength,
+          };
+        }
+
+        // Соревнования считаются по PASS-попыткам внутри окна соревнования
+        await syncCompetitionEntriesForTask(tx, { userId, taskId: task.id });
+      }
+
+      return {
+        submissionId: submission.id,
+        isNewBest: txIsNewBest,
+        previousBestLength: txPreviousBestLength,
+        improvedBy: txImprovedBy,
+        tookFirstPlaceFrom: txTookFirstPlaceFrom,
+        dethroned: txDethroned,
+        pointsEarned: txPointsEarned,
+        pointsBreakdown: txPointsBreakdown,
+        place: txPlace,
+      };
+    },
+    { maxWait: 5000, timeout: 15000 }
+  );
+
+  // «Твой рекорд побили» — бывшему лидеру задачи
+  if (transactionResult.dethroned) {
+    try {
+      const actor = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { nickname: true, displayName: true },
+      });
+
+      await notifyRecordBeaten(prisma, {
+        userId: transactionResult.dethroned.userId,
+        taskId: task.id,
+        payload: {
+          taskSlug: task.slug,
+          taskTitle: task.title,
+          byNickname: actor?.nickname || actor?.displayName || 'Другой участник',
+          newLength: codeLength,
+          yourLength: transactionResult.dethroned.previousLength,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to create record_beaten notification:', error);
+    }
+  }
 
   return {
     submissionId: transactionResult.submissionId,
@@ -322,12 +477,16 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
     testsTotal,
     place: transactionResult.place,
     isNewBest: transactionResult.isNewBest,
+    previousBestLength: transactionResult.previousBestLength,
+    improvedBy: transactionResult.improvedBy,
+    tookFirstPlaceFrom: transactionResult.tookFirstPlaceFrom,
     pointsEarned: transactionResult.pointsEarned,
     pointsBreakdown: transactionResult.pointsBreakdown,
     errorMessage: status === 'error' ? submissionError : null,
     details: testResults.map((t) => ({
       index: t.index,
       passed: t.passed,
+      isHidden: t.isHidden,
       input: t.input,
       expected: t.expected,
       actual: t.actual,
@@ -339,7 +498,7 @@ export async function runTaskSubmission(payload: TaskSubmitPayload): Promise<Sub
 function parseBatchResults(output: string, marker: string): BatchExecutionResultItem[] {
   const startMarker = `__ARENA_${marker}_START__`;
   const endMarker = `__ARENA_${marker}_END__`;
-  const start = output.indexOf(startMarker);
+  const start = output.lastIndexOf(startMarker);
   const end = output.lastIndexOf(endMarker);
 
   if (start === -1 || end === -1 || end <= start) {
@@ -406,10 +565,10 @@ async function runPerTestFallback(params: {
       const expected = testcase.expectedOutput.trim();
       results.push({
         index: testcase.index,
-        isHidden: false,
+        isHidden: testcase.isHidden,
         passed: actual === expected,
-        actual,
-        expected,
+        actual: testcase.isHidden ? null : actual,
+        expected: testcase.isHidden ? null : expected,
         error: null,
       });
       continue;
@@ -417,10 +576,10 @@ async function runPerTestFallback(params: {
 
     results.push({
       index: testcase.index,
-      isHidden: false,
+      isHidden: testcase.isHidden,
       passed: false,
       actual: null,
-      expected: testcase.expectedOutput.trim(),
+      expected: testcase.isHidden ? null : testcase.expectedOutput.trim(),
       error: single.error || 'Execution failed',
     });
   }

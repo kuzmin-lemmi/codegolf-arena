@@ -9,8 +9,15 @@ import { SubmitForm } from '@/components/task/SubmitForm';
 import { TaskTabs } from '@/components/task/TaskTabs';
 import { useAuth } from '@/context/AuthContext';
 import { toPythonLiteral } from '@/lib/python-serializer';
+import { pluralizeRu } from '@/lib/utils';
 import type { LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
 import type { SubmissionStatus } from '@/types';
+
+export interface TaskUserBest {
+  codeLength: number;
+  firstLength: number | null;
+  improveCount: number;
+}
 
 interface TaskPageClientProps {
   taskSlug: string;
@@ -26,6 +33,7 @@ interface TaskPageClientProps {
   defaultEnvId?: string;
   leaderboard: LeaderboardEntry[];
   currentUserRank?: number;
+  userBest?: TaskUserBest | null;
 }
 
 export function TaskPageClient({
@@ -39,6 +47,7 @@ export function TaskPageClient({
   defaultEnvId,
   leaderboard,
   currentUserRank,
+  userBest,
 }: TaskPageClientProps) {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
@@ -50,6 +59,21 @@ export function TaskPageClient({
 
   const bestLength = leaderboard.length > 0 ? leaderboard[0].codeLength : null;
   const top3Target = leaderboard.length >= 3 ? leaderboard[2].codeLength : bestLength;
+
+  // Самая понятная новичку цель — длина решения, которое стоит на строчку выше
+  const nextRankTarget =
+    currentUserRank && currentUserRank > 1 && leaderboard[currentUserRank - 2]
+      ? {
+          rank: currentUserRank - 1,
+          codeLength: leaderboard[currentUserRank - 2].codeLength,
+        }
+      : null;
+
+  const ownSaved =
+    userBest && userBest.firstLength !== null
+      ? userBest.firstLength - userBest.codeLength
+      : 0;
+
   const toTop1 = editorLength !== null && bestLength !== null ? editorLength - bestLength : null;
   const toTop3 = editorLength !== null && top3Target !== null ? editorLength - top3Target : null;
   const top1Progress = editorLength !== null && bestLength !== null
@@ -63,24 +87,67 @@ export function TaskPageClient({
     <div className="space-y-6">
       <Card padding="lg">
         <h2 className="text-base sm:text-lg font-semibold mb-4">Твоё решение</h2>
+
+        {/* Цель по длине: цифры показываем, код решений — нет */}
         <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary space-y-2">
-          {bestLength !== null ? (
-            <>
-              Текущий лучший результат: <span className="font-mono text-accent-green font-semibold">{bestLength}</span>
-              {top3Target !== null && (
-                <span>
-                  {' '}• цель для топ-3:{' '}
-                  <span className="font-mono text-accent-blue font-semibold">{top3Target}</span>
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              Пока нет решений в рейтинге — стань первым и задай планку для остальных.
-            </>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {bestLength !== null ? (
+              <span>
+                Лучшее решение —{' '}
+                <span className="font-mono text-accent-green font-semibold">{bestLength}</span>{' '}
+                {pluralizeRu(bestLength, ['символ', 'символа', 'символов'])}
+                {top3Target !== null && top3Target !== bestLength && (
+                  <>
+                    , цель для топ-3 —{' '}
+                    <span className="font-mono text-accent-blue font-semibold">{top3Target}</span>
+                  </>
+                )}
+              </span>
+            ) : (
+              <span>Пока нет решений в рейтинге — стань первым и задай планку для остальных.</span>
+            )}
+
+            {userBest && (
+              <span>
+                твой рекорд —{' '}
+                <span className="font-mono text-accent-blue font-semibold">{userBest.codeLength}</span>
+                {currentUserRank ? ` (место #${currentUserRank})` : ''}
+              </span>
+            )}
+          </div>
+
+          {nextRankTarget && userBest && userBest.codeLength > nextRankTarget.codeLength && (
+            <div className="text-xs">
+              До места #{nextRankTarget.rank}:{' '}
+              <span className="font-mono text-accent-blue font-semibold">
+                {nextRankTarget.codeLength}
+              </span>{' '}
+              симв. — срезать ещё{' '}
+              <span className="font-mono font-semibold">
+                {userBest.codeLength - nextRankTarget.codeLength}
+              </span>
+            </div>
           )}
+
+          {userBest && ownSaved > 0 && (
+            <div className="text-xs">
+              Твой прогресс:{' '}
+              <span className="font-mono">
+                {userBest.firstLength} → {userBest.codeLength}
+              </span>{' '}
+              (−{ownSaved} за {userBest.improveCount}{' '}
+              {pluralizeRu(userBest.improveCount, ['улучшение', 'улучшения', 'улучшений'])})
+            </div>
+          )}
+
+          {!userBest && bestLength !== null && (
+            <div className="text-xs text-text-muted">
+              Сам код лучших решений откроется, когда сдашь задачу — пока ориентируйся на длину.
+            </div>
+          )}
+
           {editorLength !== null && (
-            <div className="text-xs space-y-2">
+            <div className="text-xs space-y-2 pt-1 border-t border-border/60">
               {toTop1 !== null && (
                 <div>
                   {toTop1 > 0 ? (
@@ -130,6 +197,7 @@ export function TaskPageClient({
             </div>
           )}
         </div>
+
         <SubmitForm
           taskSlug={taskSlug}
           isLoggedIn={isLoggedIn}
@@ -193,6 +261,7 @@ export function TaskPageClient({
           taskSlug={taskSlug}
           refreshKey={solutionsRefreshKey}
           currentUserRank={currentUserRank}
+          isLoggedIn={isLoggedIn}
         />
       </Card>
     </div>

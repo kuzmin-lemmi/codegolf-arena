@@ -58,10 +58,10 @@ export async function GET(request: NextRequest) {
     const bestRows = await prisma.$queryRaw<
       Array<{ taskId: string; codeLength: bigint; nickname: string | null; displayName: string }>
     >`
-      SELECT ranked.task_id AS taskId,
-             ranked.code_length AS codeLength,
-             u.nickname AS nickname,
-             u.display_name AS displayName
+      SELECT ranked.task_id AS "taskId",
+             ranked.code_length AS "codeLength",
+             u.nickname AS "nickname",
+             u.display_name AS "displayName"
       FROM (
         SELECT
           task_id,

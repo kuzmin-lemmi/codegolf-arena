@@ -1,6 +1,7 @@
 // src/lib/auth.ts
 
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 import { randomBytes, createHash } from 'crypto';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
@@ -24,9 +25,26 @@ export interface SessionUser {
 
 // Получаем текущего пользователя из сессии
 export async function getCurrentUser(request: NextRequest): Promise<SessionUser | null> {
+  return getUserBySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+}
+
+/**
+ * Тот же пользователь, но для серверных компонентов (там нет NextRequest).
+ * Обращение к cookies() делает страницу динамической — это осознанно:
+ * страницы, которым нужен «свой» результат, не должны кэшироваться.
+ */
+export async function getCurrentUserFromCookies(): Promise<SessionUser | null> {
   try {
-    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    
+    const cookieStore = await cookies();
+    return getUserBySessionToken(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  } catch (error) {
+    console.error('Error reading session cookie:', error);
+    return null;
+  }
+}
+
+async function getUserBySessionToken(sessionToken?: string): Promise<SessionUser | null> {
+  try {
     if (!sessionToken) {
       return null;
     }

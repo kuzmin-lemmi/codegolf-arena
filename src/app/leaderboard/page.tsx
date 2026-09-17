@@ -38,6 +38,7 @@ async function getLeaderboard() {
       rank: index + 1,
       userId: user.id,
       nickname: user.nickname || user.displayName,
+      profileSlug: user.nickname || user.id,
       avatarUrl: user.avatarUrl,
       points: user.totalPoints,
       tasksSolved: user._count.bestSubmissions,
@@ -95,6 +96,7 @@ export default async function LeaderboardPage() {
                     <PodiumCard
                       rank={2}
                       nickname={leaderboard[1].nickname}
+                      profileSlug={leaderboard[1].profileSlug}
                       points={leaderboard[1].points}
                       avatar={leaderboard[1].avatarUrl}
                     />
@@ -104,6 +106,7 @@ export default async function LeaderboardPage() {
                     <PodiumCard
                       rank={1}
                       nickname={leaderboard[0].nickname}
+                      profileSlug={leaderboard[0].profileSlug}
                       points={leaderboard[0].points}
                       avatar={leaderboard[0].avatarUrl}
                     />
@@ -113,6 +116,7 @@ export default async function LeaderboardPage() {
                     <PodiumCard
                       rank={3}
                       nickname={leaderboard[2].nickname}
+                      profileSlug={leaderboard[2].profileSlug}
                       points={leaderboard[2].points}
                       avatar={leaderboard[2].avatarUrl}
                     />
@@ -148,7 +152,12 @@ export default async function LeaderboardPage() {
                                 name={entry.nickname}
                                 size="sm"
                               />
-                              <span className="font-medium">{entry.nickname}</span>
+                              <Link
+                                href={`/u/${encodeURIComponent(entry.profileSlug)}`}
+                                className="font-medium hover:text-accent-blue transition-colors"
+                              >
+                                {entry.nickname}
+                              </Link>
                             </div>
                           </td>
                           <td className="px-4 py-4 text-right">
@@ -186,6 +195,13 @@ export default async function LeaderboardPage() {
                   <hr className="border-border" />
                   <PointRule label="Стал #1 по задаче" points="+25" highlight />
                 </div>
+                <p className="text-xs text-text-muted mt-4">
+                  За улучшения по одной задаче можно получить не больше 20 (Bronze), 40 (Silver) и
+                  60 (Gold) очков, а бонус за первое место даётся один раз на задачу.{' '}
+                  <Link href="/rules" className="text-accent-blue hover:underline">
+                    Подробнее
+                  </Link>
+                </p>
               </Card>
             </div>
           </div>
@@ -198,11 +214,13 @@ export default async function LeaderboardPage() {
 function PodiumCard({
   rank,
   nickname,
+  profileSlug,
   points,
   avatar,
 }: {
   rank: number;
   nickname: string;
+  profileSlug: string;
   points: number;
   avatar: string | null;
 }) {
@@ -224,7 +242,12 @@ function PodiumCard({
         <RankDisplay rank={rank} size="lg" />
       </div>
       <Avatar src={avatar} name={nickname} size="md" className="mx-auto mb-2" />
-      <div className="font-semibold truncate">{nickname}</div>
+      <Link
+        href={`/u/${encodeURIComponent(profileSlug)}`}
+        className="font-semibold truncate block hover:text-accent-blue transition-colors"
+      >
+        {nickname}
+      </Link>
       <div className="text-accent-blue font-mono font-bold">{points}</div>
     </Card>
   );

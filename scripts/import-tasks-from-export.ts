@@ -14,6 +14,8 @@ interface RawTestcase {
   inputData: { args: unknown[] };
   expectedOutput: string;
   orderIndex: number;
+  // В выгрузке поля может не быть — тогда скрытость определяется по номеру
+  isHidden?: boolean;
 }
 
 interface RawTask {
@@ -119,7 +121,9 @@ async function main() {
             taskId: saved.id,
             inputData: JSON.stringify(tc.inputData),
             expectedOutput: String(tc.expectedOutput),
-            isHidden: false,
+            // Первые три теста открытые (для отладки), остальные скрытые:
+            // иначе правильные ответы уходят в браузер игрока
+            isHidden: typeof tc.isHidden === 'boolean' ? tc.isHidden : idx >= 3,
             orderIndex: typeof tc.orderIndex === 'number' ? tc.orderIndex : idx,
           })),
         });

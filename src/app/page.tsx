@@ -80,18 +80,20 @@ async function getHomePageData() {
       orderBy: { achievedAt: 'desc' },
       take: 5,
       include: {
-        user: { select: { nickname: true, displayName: true } },
+        user: { select: { id: true, nickname: true, displayName: true } },
         task: { select: { title: true, slug: true } },
       },
     });
 
     const recentRecords = recentBestSubmissions.map((s) => ({
       nickname: s.user.nickname || s.user.displayName,
+      profileSlug: s.user.nickname || s.userId,
       taskTitle: s.task.title,
       taskSlug: s.task.slug,
       newLength: s.codeLength,
-      oldLength: s.codeLength + Math.floor(Math.random() * 10) + 1,
-      diff: -Math.floor(Math.random() * 10) - 1,
+      // Реальный прогресс: с какой длины начинали и сколько раз укоротили
+      firstLength: s.firstLength,
+      improvements: s.improveCount,
     }));
 
     const recommendedTask = await prisma.task.findFirst({
@@ -101,6 +103,7 @@ async function getHomePageData() {
       },
       orderBy: [{ bestSubmissions: { _count: 'asc' } }, { createdAt: 'asc' }],
       select: {
+        id: true,
         slug: true,
         title: true,
         functionSignature: true,
@@ -110,6 +113,15 @@ async function getHomePageData() {
         },
       },
     });
+
+    // Цель по длине для новичка: показываем цифру, но не само решение
+    const recommendedBest = recommendedTask
+      ? await prisma.bestSubmission.findFirst({
+          where: { taskId: recommendedTask.id },
+          orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }],
+          select: { codeLength: true },
+        })
+      : null;
 
     return {
       weeklyChallenge: weeklyChallenge
@@ -138,6 +150,7 @@ async function getHomePageData() {
             functionSignature: recommendedTask.functionSignature,
             preview: recommendedTask.statementMd.split('\n')[0],
             participants: recommendedTask._count.bestSubmissions,
+            bestLength: recommendedBest?.codeLength ?? null,
           }
         : null,
     };
@@ -213,6 +226,17 @@ export default async function HomePage() {
                   <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
                     <span className="badge bg-background-tertiary border border-border/60">{recommendedTask.functionSignature}</span>
                     <span>Участников: {recommendedTask.participants}</span>
+                    {recommendedTask.bestLength ? (
+                      <span>
+                        • Лучшее решение —{' '}
+                        <span className="font-mono text-accent-green font-semibold">
+                          {recommendedTask.bestLength}
+                        </span>{' '}
+                        симв.
+                      </span>
+                    ) : (
+                      <span>• Рекорда ещё нет — можно поставить свой</span>
+                    )}
                     <span>• Подходит для первого сабмита</span>
                   </div>
                 </div>
@@ -290,8 +314,18 @@ export default async function HomePage() {
                       <div className="w-2 h-2 rounded-full bg-accent-green" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{record.nickname}</span>
+                          <Link
+                            href={`/u/${encodeURIComponent(record.profileSlug)}`}
+                            className="font-medium truncate hover:text-accent-blue"
+                          >
+                            {record.nickname}
+                          </Link>
                           <span className="text-accent-green font-mono font-bold">{record.newLength}</span>
+                          {record.improvements > 0 && record.firstLength && record.firstLength > record.newLength && (
+                            <span className="text-xs text-text-muted font-mono">
+                              (было {record.firstLength})
+                            </span>
+                          )}
                         </div>
                         <Link
                           href={`/task/${record.taskSlug}`}

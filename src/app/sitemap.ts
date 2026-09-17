@@ -43,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Динамические страницы задач
   let taskPages: MetadataRoute.Sitemap = [];
   let competitionPages: MetadataRoute.Sitemap = [];
+  let profilePages: MetadataRoute.Sitemap = [];
 
   try {
     const tasks = await prisma.task.findMany({
@@ -68,9 +69,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.6,
     }));
+
+    // Публичные страницы участников: их можно показывать и они приводят людей на сайт
+    const users = await prisma.user.findMany({
+      where: { totalPoints: { gt: 0 } },
+      select: { id: true, nickname: true, updatedAt: true },
+      orderBy: { totalPoints: 'desc' },
+      take: 500,
+    });
+
+    profilePages = users.map((user) => ({
+      url: `${baseUrl}/u/${encodeURIComponent(user.nickname || user.id)}`,
+      lastModified: user.updatedAt,
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    }));
   } catch (error) {
     console.error('Error generating sitemap:', error);
   }
 
-  return [...staticPages, ...taskPages, ...competitionPages];
+  return [...staticPages, ...taskPages, ...competitionPages, ...profilePages];
 }

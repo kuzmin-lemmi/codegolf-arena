@@ -7,6 +7,7 @@ import { Card } from '@/components/ui';
 import { TaskStatement } from '@/components/task/TaskStatement';
 import { TaskPageClient } from './TaskPageClient';
 import { prisma } from '@/lib/db';
+import { getCurrentUserFromCookies } from '@/lib/auth';
 import type { Metadata } from 'next';
 import type { Task, TaskConstraints, TaskMode, TaskStatus, TaskTier } from '@/types';
 
@@ -88,6 +89,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
   const leaderboard = leaderboardEntries.map((entry, index) => ({
     rank: index + 1,
     nickname: entry.user.nickname || entry.user.displayName,
+    profileSlug: entry.user.nickname || entry.userId,
     avatarUrl: entry.user.avatarUrl,
     codeLength: entry.codeLength,
     achievedAt: entry.achievedAt,
@@ -114,7 +116,51 @@ export default async function TaskPage({ params }: TaskPageProps) {
     expectedOutput: tc.expectedOutput,
   }));
 
-  const currentUserRank = undefined;
+  // Свой рекорд и своё место: из-за этого страница рендерится на каждый запрос,
+  // зато лидерборд и цель по длине всегда актуальные
+  const currentUser = await getCurrentUserFromCookies();
+
+  let currentUserRank: number | undefined;
+  let userBest: { codeLength: number; firstLength: number | null; improveCount: number } | null =
+    null;
+
+  if (currentUser) {
+    const ownBest = await prisma.bestSubmission.findUnique({
+      where: {
+        taskId_userId: {
+          taskId: task.id,
+          userId: currentUser.id,
+        },
+      },
+      select: {
+        codeLength: true,
+        firstLength: true,
+        improveCount: true,
+        achievedAt: true,
+      },
+    });
+
+    if (ownBest) {
+      userBest = {
+        codeLength: ownBest.codeLength,
+        firstLength: ownBest.firstLength,
+        improveCount: ownBest.improveCount,
+      };
+
+      // Место по той же сортировке, что и лидерборд: длина, затем время рекорда
+      const betterCount = await prisma.bestSubmission.count({
+        where: {
+          taskId: task.id,
+          OR: [
+            { codeLength: { lt: ownBest.codeLength } },
+            { codeLength: ownBest.codeLength, achievedAt: { lt: ownBest.achievedAt } },
+          ],
+        },
+      });
+
+      currentUserRank = betterCount + 1;
+    }
+  }
 
   let nextTask = await prisma.task.findFirst({
     where: {
@@ -174,6 +220,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 defaultEnvId={taskData.constraintsJson.default_env || 'base'}
                 leaderboard={leaderboard}
                 currentUserRank={currentUserRank}
+                userBest={userBest}
               />
             </div>
         </div>

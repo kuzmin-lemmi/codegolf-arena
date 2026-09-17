@@ -6,10 +6,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   User, Trophy, Code2, Calendar, Edit2, Check, X, 
-  ExternalLink, ChevronRight, Lock
+  ExternalLink, ChevronRight, Lock, Share2
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge, Avatar } from '@/components/ui';
-import { formatDate, cn } from '@/lib/utils';
+import { ShareProfile } from '@/components/profile/ShareProfile';
+import { formatDate, cn, pluralizeRu } from '@/lib/utils';
 import { useProfile } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 
@@ -127,6 +128,15 @@ export default function ProfilePage() {
   }
 
   const solvedTasks = data.solvedTasks || [];
+  const publicSlug = data.nickname || data.id;
+  const publicProfilePath = `/u/${encodeURIComponent(publicSlug)}`;
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const origin = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  const publicProfileUrl = `${origin}${publicProfilePath}`;
+  const shareText = `${nickname} на Арене однострочников: ${data.totalPoints} ${pluralizeRu(
+    data.totalPoints,
+    ['очко', 'очка', 'очков']
+  )}, ${data.tasksSolved} ${pluralizeRu(data.tasksSolved, ['задача', 'задачи', 'задач'])}`;
 
   return (
     <div className="min-h-screen">
@@ -265,7 +275,43 @@ export default function ProfilePage() {
                   label="Очки прогресса"
                   value={data.totalPoints}
                 />
+                <StatBlock
+                  label="Срезано символов"
+                  value={data.charsSaved ?? 0}
+                />
               </div>
+              <p className="text-xs text-text-muted mt-4">
+                Очки дают за первое решение задачи, за каждое укорачивание своего рекорда и за
+                первый выход на #1.{' '}
+                <Link href="/rules" className="text-accent-blue hover:underline">
+                  Как считаются очки
+                </Link>
+              </p>
+            </Card>
+
+            {/* Публичная страница */}
+            <Card padding="lg">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-accent-blue" />
+                Публичная страница
+              </h2>
+
+              <p className="text-sm text-text-secondary mb-3">
+                Ссылку можно показывать кому угодно: там видны твои результаты, но не код решений.
+              </p>
+
+              <Link
+                href={publicProfilePath}
+                className="block mb-4 text-sm text-accent-blue hover:underline break-all"
+              >
+                {publicProfileUrl}
+              </Link>
+
+              <ShareProfile
+                profileUrl={publicProfileUrl}
+                imageUrl={`${publicProfilePath}/opengraph-image`}
+                shareText={shareText}
+              />
             </Card>
 
             {/* Password */}
@@ -361,10 +407,19 @@ export default function ProfilePage() {
                           <span className="font-medium truncate">{task.title}</span>
                           <TierBadge tier={task.tier} />
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-text-secondary">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
                           <span>
                             Длина: <span className="text-accent-green font-mono font-bold">{task.length}</span>
                           </span>
+                          {task.firstLength !== null && task.firstLength > task.length && (
+                            <span>
+                              Прогресс:{' '}
+                              <span className="font-mono text-text-primary">
+                                {task.firstLength} → {task.length}
+                              </span>{' '}
+                              (−{task.firstLength - task.length})
+                            </span>
+                          )}
                           <span>
                             Решено: <span className="text-text-primary">{formatDate(new Date(task.achievedAt))}</span>
                           </span>

@@ -14,6 +14,9 @@ export async function GET(
       where: { slug },
       include: {
         testcases: {
+          // Скрытые тесты наружу не отдаём: иначе правильные ответы
+          // видны любому, кто откроет данные страницы
+          where: { isHidden: false },
           orderBy: { orderIndex: 'asc' },
           select: {
             id: true,
@@ -21,6 +24,9 @@ export async function GET(
             expectedOutput: true,
             orderIndex: true,
           },
+        },
+        _count: {
+          select: { testcases: true },
         },
       },
     });
@@ -33,8 +39,13 @@ export async function GET(
     }
 
     // Парсим JSON поля
+    const { _count, ...taskFields } = task;
     const taskData = {
-      ...task,
+      ...taskFields,
+      // Сколько всего тестов и сколько из них скрытых — чтобы показать
+      // игроку «+N скрытых», не раскрывая их содержимого
+      testcasesTotal: _count.testcases,
+      hiddenTestcaseCount: Math.max(_count.testcases - task.testcases.length, 0),
       functionArgs: JSON.parse(task.functionArgs),
       constraintsJson: JSON.parse(task.constraintsJson),
       testcases: task.testcases.map((tc) => ({

@@ -4,11 +4,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, ChevronDown, LogOut, Loader2, Code2, Sun, Moon, Menu, X } from 'lucide-react';
+import { User, ChevronDown, LogOut, Loader2, Code2, Sun, Moon, Menu, X, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 const navigation = [
   { name: 'Задача недели', href: '/' },
@@ -97,6 +98,9 @@ export function Header() {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
+            {/* Уведомления: «твой рекорд побили» */}
+            {isLoggedIn && !isLoading && <NotificationBell />}
+
             {/* Кнопка темы */}
             {mounted && (
               <button
@@ -143,6 +147,14 @@ export function Header() {
                       >
                         <User className="w-4 h-4" />
                         Профиль
+                      </Link>
+                      <Link
+                        href={`/u/${encodeURIComponent(user.nickname || user.id)}`}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-background-tertiary transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Моя страница
                       </Link>
                       <hr className="my-1 border-border" />
                       <button

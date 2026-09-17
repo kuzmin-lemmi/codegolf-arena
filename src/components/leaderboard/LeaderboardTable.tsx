@@ -1,5 +1,6 @@
 // src/components/leaderboard/LeaderboardTable.tsx
 
+import Link from 'next/link';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { Avatar } from '@/components/ui';
 import { Trophy, Clock, Check } from 'lucide-react';
@@ -7,10 +8,34 @@ import { Trophy, Clock, Check } from 'lucide-react';
 export interface LeaderboardEntry {
   rank: number;
   nickname: string;
+  // Ник или id — часть ссылки /u/<slug> на публичную страницу участника
+  profileSlug?: string | null;
   avatarUrl?: string | null;
   codeLength: number;
   achievedAt: Date | string;
   isCurrentUser?: boolean;
+}
+
+function NicknameCell({ entry }: { entry: LeaderboardEntry }) {
+  const content = (
+    <>
+      {entry.nickname}
+      {entry.isCurrentUser && <Check className="inline w-4 h-4 ml-1 text-accent-green" />}
+    </>
+  );
+
+  if (!entry.profileSlug) {
+    return <span className="font-medium">{content}</span>;
+  }
+
+  return (
+    <Link
+      href={`/u/${encodeURIComponent(entry.profileSlug)}`}
+      className="font-medium hover:text-accent-blue transition-colors"
+    >
+      {content}
+    </Link>
+  );
 }
 
 interface LeaderboardTableProps {
@@ -82,16 +107,8 @@ export function LeaderboardTable({
                         name={entry.nickname}
                         size="sm"
                       />
-                      <span
-                        className={cn(
-                          'font-medium',
-                          entry.isCurrentUser && 'text-accent-blue'
-                        )}
-                      >
-                        {entry.nickname}
-                        {entry.isCurrentUser && (
-                          <Check className="inline w-4 h-4 ml-1 text-accent-green" />
-                        )}
+                      <span className={cn(entry.isCurrentUser && 'text-accent-blue')}>
+                        <NicknameCell entry={entry} />
                       </span>
                     </div>
                   </td>
@@ -129,9 +146,8 @@ export function LeaderboardTable({
                 <RankBadge rank={entry.rank} />
                 <Avatar src={entry.avatarUrl} name={entry.nickname} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">
-                    {entry.nickname}
-                    {entry.isCurrentUser && <Check className="inline w-4 h-4 ml-1 text-accent-green" />}
+                  <div className="truncate">
+                    <NicknameCell entry={entry} />
                   </div>
                   <div className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
                     <Clock className="w-3 h-3" />

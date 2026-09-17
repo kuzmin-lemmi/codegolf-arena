@@ -25,11 +25,12 @@ model User {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  submissions       Submission[]
-  bestSubmissions   BestSubmission[]
-  sessions          Session[]
+  submissions        Submission[]
+  bestSubmissions    BestSubmission[]
+  sessions           Session[]
   competitionEntries CompetitionEntry[]
-  submissionJobs    SubmissionJob[]
+  submissionJobs     SubmissionJob[]
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -64,11 +65,12 @@ model Task {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  testcases         Testcase[]
-  submissions       Submission[]
-  bestSubmissions   BestSubmission[]
-  weeklyChallenges  WeeklyChallenge[]
-  competitionTasks  CompetitionTask[]
+  testcases        Testcase[]
+  submissions      Submission[]
+  bestSubmissions  BestSubmission[]
+  weeklyChallenges WeeklyChallenge[]
+  competitionTasks CompetitionTask[]
+  notifications    Notification[]
 
   @@map("tasks")
 }
@@ -99,8 +101,8 @@ model Submission {
   errorMsg    String?  @map("error_msg")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  task           Task             @relation(fields: [taskId], references: [id])
-  user           User             @relation(fields: [userId], references: [id])
+  task           Task            @relation(fields: [taskId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
   bestSubmission BestSubmission?
 
   @@index([taskId])
@@ -110,12 +112,17 @@ model Submission {
 }
 
 model BestSubmission {
-  id           String   @id @default(uuid())
-  taskId       String   @map("task_id")
-  userId       String   @map("user_id")
-  submissionId String   @unique @map("submission_id")
-  codeLength   Int      @map("code_length")
-  achievedAt   DateTime @default(now()) @map("achieved_at")
+  id                String   @id @default(uuid())
+  taskId            String   @map("task_id")
+  userId            String   @map("user_id")
+  submissionId      String   @unique @map("submission_id")
+  codeLength        Int      @map("code_length")
+  achievedAt        DateTime @default(now()) @map("achieved_at")
+  // Прогресс укорачивания: с чего начал, сколько раз улучшил, сколько очков за улучшения уже получил
+  firstLength       Int?     @map("first_length")
+  improveCount      Int      @default(0) @map("improve_count")
+  improvePoints     Int      @default(0) @map("improve_points")
+  firstPlaceAwarded Boolean  @default(false) @map("first_place_awarded")
 
   task       Task       @relation(fields: [taskId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
@@ -185,6 +192,25 @@ model CompetitionEntry {
 
   @@unique([competitionId, userId])
   @@map("competition_entries")
+}
+
+// Уведомление пользователю (например, «твой рекорд побили»)
+model Notification {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  type        String
+  taskId      String?   @map("task_id")
+  payloadJson String    @map("payload_json")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 model SubmissionJob {

@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import { CodeEditor } from './CodeEditor';
 import { Button } from '@/components/ui';
 import { Send, RotateCcw, Play, CheckCircle, XCircle, Loader2, LogIn, Download } from 'lucide-react';
-import { validateOneliner, calculateCodeLength, cn } from '@/lib/utils';
+import { validateOneliner, calculateCodeLength, cn, pluralizeRu } from '@/lib/utils';
 import { usePyodide } from '@/hooks/usePyodide';
 import { SubmissionStatus } from '@/types';
 import { ENV, resolveEnvId, type EnvId } from '@/lib/environments';
@@ -41,6 +41,12 @@ interface SubmitResult {
   testsTotal: number;
   place: number | null;
   isNewBest?: boolean;
+  // Личный рекорд до этой отправки и на сколько символов он улучшен
+  previousBestLength?: number | null;
+  improvedBy?: number | null;
+  tookFirstPlaceFrom?: string | null;
+  pointsEarned?: number;
+  pointsBreakdown?: string[];
   errorMessage: string | null;
   details?: TestResultDetail[];
 }
@@ -48,6 +54,8 @@ interface SubmitResult {
 interface TestResultDetail {
   index: number;
   passed: boolean;
+  // Скрытый тест: показываем только факт прохождения
+  isHidden?: boolean;
   input?: string;
   expected?: string;
   actual?: string;
@@ -667,10 +675,25 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
                     #{result.place} место!
                   </span>
                 )}
+                {typeof result.pointsEarned === 'number' && result.pointsEarned > 0 && (
+                  <span className="ml-3 text-accent-blue text-lg">
+                    +{result.pointsEarned}{' '}
+                    {pluralizeRu(result.pointsEarned, ['очко', 'очка', 'очков'])}
+                  </span>
+                )}
               </div>
               <div className="text-sm text-text-secondary mt-1">
                 {result.isNewBest ? 'Новый рекорд: ' : 'Результат: '}
                 <span className="font-mono font-bold text-accent-green text-base">{result.length}</span> символов
+                {typeof result.improvedBy === 'number' &&
+                  result.improvedBy > 0 &&
+                  typeof result.previousBestLength === 'number' && (
+                    <>
+                      {' '}
+                      — было <span className="font-mono">{result.previousBestLength}</span>, короче на{' '}
+                      <span className="font-mono text-accent-green font-semibold">{result.improvedBy}</span>
+                    </>
+                  )}
               </div>
             </div>
           </>
@@ -704,6 +727,31 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
           </>
         )}
       </div>
+
+      {isPassed && (
+        <div className="mt-4 space-y-2">
+          {result.tookFirstPlaceFrom && (
+            <div className="text-sm text-tier-gold">
+              Первое место забрано у {result.tookFirstPlaceFrom} — теперь рекорд твой.
+            </div>
+          )}
+
+          {!result.improvedBy && typeof result.previousBestLength === 'number' && (
+            <div className="text-sm text-text-secondary">
+              Твой рекорд остаётся{' '}
+              <span className="font-mono">{result.previousBestLength}</span> символов — эта попытка не короче.
+            </div>
+          )}
+
+          {result.pointsBreakdown && result.pointsBreakdown.length > 0 && (
+            <div className="rounded-md border border-border/70 bg-background/40 px-3 py-2 text-xs text-text-secondary space-y-1">
+              {result.pointsBreakdown.map((line) => (
+                <div key={line}>• {line}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Test details */}
       {result.details && result.details.length > 0 && (
@@ -829,7 +877,9 @@ function TestDetails({
               ) : (
                 <XCircle className="w-4 h-4 text-accent-red" />
               )}
-              <span className="font-medium">Тест {test.index + 1}</span>
+              <span className="font-medium">
+                {test.isHidden ? 'Скрытый тест' : 'Тест'} {test.index + 1}
+              </span>
               <span
                 className={cn(
                   'text-xs',
@@ -839,19 +889,26 @@ function TestDetails({
                 {test.passed ? 'PASS' : 'FAIL'}
               </span>
             </div>
-            <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
-              <div>
-                Ввод: {test.input ? `solution(${test.input})` : 'solution()'}
+            {test.isHidden ? (
+              <div className="text-xs text-text-muted mt-2">
+                Данные скрытого теста не показываются
+                {test.error && <span className="text-accent-red"> — {test.error}</span>}
               </div>
-              {test.expected && <div>Ожидалось: {test.expected}</div>}
-              {test.actual && <div>Получено: {test.actual}</div>}
-              {!test.passed && test.expected && test.actual && (
+            ) : (
+              <div className="font-mono text-xs text-text-muted mt-2 space-y-0.5">
                 <div>
-                  Diff: {formatDiffHint(test.expected, test.actual)}
+                  Ввод: {test.input ? `solution(${test.input})` : 'solution()'}
                 </div>
-              )}
-              {test.error && <div className="text-accent-red">{test.error}</div>}
-            </div>
+                {test.expected && <div>Ожидалось: {test.expected}</div>}
+                {test.actual && <div>Получено: {test.actual}</div>}
+                {!test.passed && test.expected && test.actual && (
+                  <div>
+                    Diff: {formatDiffHint(test.expected, test.actual)}
+                  </div>
+                )}
+                {test.error && <div className="text-accent-red">{test.error}</div>}
+              </div>
+            )}
           </div>
         ))}
       </div>
