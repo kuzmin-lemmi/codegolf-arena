@@ -75,15 +75,27 @@ fi
 
 echo
 echo "=== Обязательные настройки ==="
-CHECK_LIST=("${REQUIRED[@]}")
-if [[ "${IS_LOCAL}" -eq 0 ]]; then CHECK_LIST+=("${REQUIRED_PROD_ONLY[@]}"); fi
-for name in "${CHECK_LIST[@]}"; do
+for name in "${REQUIRED[@]}"; do
   value="$(read_env_var "${name}" || true)"
   show "${name}" "${value}"
   if [[ -z "${value}" ]]; then PROBLEMS=$((PROBLEMS + 1)); fi
 done
-if [[ "${IS_LOCAL}" -eq 1 ]]; then
-  echo "  (ключи Stepik локально не требуются — вход по email работает без них)"
+
+# Вход через Stepik — необязательная возможность: без ключей сайт работает,
+# просто кнопка «Войти через Stepik» вернёт ошибку. Поэтому это
+# предупреждение, а не проблема, из-за которой нельзя выкладывать сайт
+echo
+echo "=== Вход через Stepik (необязательно) ==="
+STEPIK_MISSING=0
+for name in "${REQUIRED_PROD_ONLY[@]}"; do
+  value="$(read_env_var "${name}" || true)"
+  show "${name}" "${value}"
+  if [[ -z "${value}" ]]; then STEPIK_MISSING=1; fi
+done
+if [[ "${STEPIK_MISSING}" -eq 1 ]]; then
+  echo "  ВНИМАНИЕ (не блокирует): ключей нет — работает только вход по email"
+else
+  echo "  OK: вход через Stepik настроен"
 fi
 
 echo
