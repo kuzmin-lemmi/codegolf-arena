@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       secure: false, // dev mode
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: SESSION_MAX_AGE,
       path: '/',
     });

@@ -79,11 +79,16 @@ export async function GET(request: NextRequest) {
 
     // Устанавливаем cookie и редиректим
     const response = NextResponse.redirect(buildAppUrl(returnTo, request));
-    
+
+    // sameSite: 'lax', а не 'strict'. Возврат со stepik.org — переход,
+    // начатый чужим сайтом, и куку со strict браузер на нём не отправит:
+    // участник увидел бы себя «не вошедшим» до ручного обновления страницы.
+    // Мутации защищены проверкой Origin (validateMutationRequest), а не куком,
+    // поэтому lax ничего не ослабляет
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: SESSION_MAX_AGE,
       path: '/',
     });
@@ -92,7 +97,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set('arena_return_to', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 0,
       path: '/',
     });
@@ -100,7 +105,7 @@ export async function GET(request: NextRequest) {
     response.cookies.set(OAUTH_STATE_COOKIE, '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       maxAge: 0,
       path: '/',
     });

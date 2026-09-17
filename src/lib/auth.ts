@@ -3,6 +3,7 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { randomBytes, createHash } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
@@ -422,23 +423,91 @@ export async function getStepikUser(accessToken: string): Promise<StepikUser> {
 }
 
 // Создание или обновление пользователя из Stepik
+const NICKNAME_MAX_LENGTH = 20;
+
+/**
+ * Приводит имя из Stepik к набору символов, который принимает обычная
+ * регистрация. Полное имя приходит с пробелами и точками, а ник попадает
+ * в адрес публичной страницы /u/<ник> — с пробелами он ломается.
+ */
+function sanitizeNickname(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[^a-zA-Zа-яА-ЯёЁ0-9_]+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 16);
+}
+
+/**
+ * Подбирает свободный ник: anton, anton2, anton3…
+ * Ник уникален в базе, а имена в Stepik повторяются — без подбора вход
+ * второго «Ивана Иванова» падал бы с ошибкой авторизации.
+ */
+async function resolveFreeNickname(preferred: string): Promise<{ nickname: string; nicknameKey: string }> {
+  const base = sanitizeNickname(preferred) || 'user';
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const candidate = (attempt === 0 ? base : `${base}${attempt + 1}`).slice(0, NICKNAME_MAX_LENGTH);
+    const taken = await prisma.user.findFirst({
+      where: { nicknameKey: candidate.toLowerCase() },
+      select: { id: true },
+    });
+
+    if (!taken) {
+      return { nickname: candidate, nicknameKey: candidate.toLowerCase() };
+    }
+  }
+
+  const fallback = `${base.slice(0, 12)}_${randomBytes(3).toString('hex')}`;
+  return { nickname: fallback, nicknameKey: fallback.toLowerCase() };
+}
+
 export async function findOrCreateUserFromStepik(stepikUser: StepikUser) {
-  const user = await prisma.user.upsert({
+  const existing = await prisma.user.findUnique({
     where: { stepikUserId: stepikUser.id },
-    update: {
-      displayName: stepikUser.full_name,
-      avatarUrl: stepikUser.avatar,
-    },
-    create: {
-      stepikUserId: stepikUser.id,
-      displayName: stepikUser.full_name,
-      nickname: stepikUser.alias || stepikUser.full_name.slice(0, 20),
-      nicknameKey: (stepikUser.alias || stepikUser.full_name.slice(0, 20)).toLowerCase(),
-      avatarUrl: stepikUser.avatar,
-    },
   });
 
-  return user;
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        displayName: stepikUser.full_name,
+        avatarUrl: stepikUser.avatar,
+      },
+    });
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { nickname, nicknameKey } = await resolveFreeNickname(
+      stepikUser.alias || stepikUser.full_name || `user${stepikUser.id}`
+    );
+
+    try {
+      return await prisma.user.create({
+        data: {
+          stepikUserId: stepikUser.id,
+          displayName: stepikUser.full_name,
+          nickname,
+          nicknameKey,
+          avatarUrl: stepikUser.avatar,
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+        throw error;
+      }
+
+      // Кто-то успел раньше: если это тот же пользователь Stepik (два входа
+      // одновременно) — возвращаем его, если занят ник — берём следующий
+      const raced = await prisma.user.findUnique({
+        where: { stepikUserId: stepikUser.id },
+      });
+      if (raced) return raced;
+    }
+  }
+
+  throw new Error('Could not create user from Stepik: nickname conflict');
 }
 
 // ==================== DEV MODE ====================
