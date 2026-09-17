@@ -49,33 +49,67 @@ apt-get update -qq
 ok "список обновлён"
 
 step "3/8 Базовые пакеты"
-apt-get install -y -qq \
-  ca-certificates curl git nginx ufw \
-  postgresql-client \
-  certbot python3-certbot-nginx \
-  tmux htop unattended-upgrades
+apt-get install -y -qq ca-certificates curl git gnupg nginx ufw postgresql-client certbot python3-certbot-nginx tmux htop unattended-upgrades
 ok "пакеты установлены"
 
 step "4/8 Docker (база и раннер кода)"
-if command -v docker >/dev/null 2>&1; then
-  ok "docker уже установлен: $(docker --version)"
-else
-  apt-get install -y -qq docker.io docker-compose-v2
+if ! command -v docker >/dev/null 2>&1; then
+  apt-get install -y -qq docker.io
   systemctl enable --now docker
-  ok "docker установлен"
+  ok "docker установлен: $(docker --version)"
+else
+  ok "docker уже установлен: $(docker --version)"
 fi
 
+# Нужна именно команда "docker compose" (версия 2). В Ubuntu 24.04 это пакет
+# docker-compose-v2, в 22.04 его нет — тогда берём плагин из репозитория Docker
+if ! docker compose version >/dev/null 2>&1; then
+  apt-get install -y -qq docker-compose-v2 >/dev/null 2>&1 || true
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Пакета docker-compose-v2 нет, подключаем репозиторий Docker"
+  install -d -m 0755 /usr/share/keyrings
+  # Скачиваем только ключ подписи репозитория (данные, не исполняемый код)
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker.gpg
+  UBUNTU_CODENAME="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
+  echo "deb [signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-compose-plugin
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "ERROR: команда 'docker compose' недоступна — база и раннер не поднимутся" >&2
+  exit 1
+fi
+ok "docker compose работает: $(docker compose version)"
+
 step "5/8 Node.js"
-if command -v node >/dev/null 2>&1; then
-  ok "node уже установлен: $(node --version)"
+# Next 15 требует Node не ниже 18.18. В Ubuntu 22.04 штатный пакет — Node 12,
+# поэтому при старом или отсутствующем Node берём 20 из репозитория NodeSource
+node_major() {
+  command -v node >/dev/null 2>&1 || return 1
+  node --version | sed 's/^v//' | cut -d. -f1
+}
+
+CURRENT_NODE="$(node_major || echo 0)"
+if [[ "${CURRENT_NODE}" -ge 18 ]]; then
+  ok "node подходит: $(node --version)"
 else
-  apt-get install -y -qq nodejs npm
+  if [[ "${CURRENT_NODE}" -gt 0 ]]; then
+    echo "Установлен Node ${CURRENT_NODE} — слишком старый, ставим Node 20"
+  fi
+  install -d -m 0755 /usr/share/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor --yes -o /usr/share/keyrings/nodesource.gpg
+  echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+  apt-get update -qq
+  apt-get install -y -qq nodejs
   ok "node установлен: $(node --version)"
 fi
-# Next 15 требует Node не ниже 18.18
-NODE_MAJOR="$(node --version | sed 's/^v//' | cut -d. -f1)"
-if [[ "${NODE_MAJOR}" -lt 18 ]]; then
-  echo "ВНИМАНИЕ: Node ${NODE_MAJOR} слишком старый, нужен 18.18+" >&2
+
+if [[ "$(node_major || echo 0)" -lt 18 ]]; then
+  echo "ERROR: Node всё ещё старше 18 — сборка сайта не пройдёт" >&2
+  exit 1
 fi
 
 step "6/8 Пользователь ${DEPLOY_USER}"
@@ -119,9 +153,11 @@ fi
 echo
 echo "Подготовка сервера закончена."
 echo
-echo "Дальше — по docs/server-setup.md, начиная с шага «Настройки»:"
+echo "Версии:"
+echo "  docker:  $(docker --version)"
+echo "  node:    $(node --version)"
+echo "  nginx:   $(nginx -v 2>&1)"
+echo
+echo "Дальше — по docs/server-setup.md, шаг 2 «Настройки»:"
 echo "  su - ${DEPLOY_USER}"
 echo "  cd ${APP_DIR}"
-echo
-echo "Проверить, что важное на месте:"
-echo "  docker --version && node --version && nginx -v && free -h | head -2"
