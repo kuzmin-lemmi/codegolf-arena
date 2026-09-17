@@ -1,0 +1,33 @@
+# Служба сайта. Установка:
+#   sudo cp scripts/systemd/codegolf.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now codegolf
+[Unit]
+Description=Codegolf Arena (Next.js)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+# Сборка standalone: сюда деплой-скрипт кладёт server.js
+WorkingDirectory=/home/deploy/codegolf-arena/.next/standalone
+EnvironmentFile=/home/deploy/codegolf-arena/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Слушаем только локально: наружу пускает nginx
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+# Запас памяти на сервере с 2 ГБ: если процесс распухнет, его перезапустят,
+# а не уронят базу и раннер вместе с ним
+MemoryMax=700M
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

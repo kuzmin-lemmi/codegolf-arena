@@ -125,6 +125,13 @@ case "${PISTON}" in
   *)             echo "  ВНИМАНИЕ: PISTON_API_URL = ${PISTON} — убедитесь, что это ваш раннер" ;;
 esac
 
+DB_URL_CHECK="$(read_env_var DATABASE_URL || true)"
+if [[ "${IS_LOCAL}" -eq 0 && "${DB_URL_CHECK}" == *":codegolf@"* ]]; then
+  echo "  ОПАСНО: у базы пароль по умолчанию (codegolf). Смените его в .env"
+  echo "          (POSTGRES_PASSWORD и DATABASE_URL), затем: docker compose up -d"
+  PROBLEMS=$((PROBLEMS + 1))
+fi
+
 BASE_URL="${BASE_URL_EARLY}"
 REDIRECT="$(read_env_var STEPIK_REDIRECT_URI || true)"
 if [[ -n "${BASE_URL}" && -n "${REDIRECT}" ]]; then

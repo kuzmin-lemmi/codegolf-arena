@@ -13,19 +13,22 @@ cleanup() {
 
 trap cleanup EXIT
 
-echo "[1/6] Lint"
+echo "[1/7] Lint"
 npm run lint
 
-echo "[2/6] Prisma client"
+echo "[2/7] Runner isolation (честность проверки решений)"
+npm run test:sandbox
+
+echo "[3/7] Prisma client"
 npm run db:generate
 
-echo "[3/6] PostgreSQL preflight"
+echo "[4/7] PostgreSQL preflight"
 NODE_ENV=production npm run ops:preflight:postgres
 
-echo "[4/6] Build"
+echo "[5/7] Build"
 npm run build
 
-echo "[5/6] Start app for smoke"
+echo "[6/7] Start app for smoke"
 npm run start > /tmp/codegolf-predeploy-start.log 2>&1 &
 APP_PID=$!
 
@@ -44,7 +47,7 @@ for i in {1..30}; do
   sleep 1
 done
 
-echo "[6/6] Local smoke"
+echo "[7/7] Local smoke"
 SMOKE_BASE_URL="${BASE_URL}" npm run ops:smoke
 
 echo "Predeploy checks passed."

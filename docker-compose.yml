@@ -8,9 +8,18 @@ services:
     container_name: codegolf-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: codegolf
-      POSTGRES_PASSWORD: codegolf
-      POSTGRES_DB: codegolf
+      POSTGRES_USER: ${POSTGRES_USER:-codegolf}
+      # На сервере задайте POSTGRES_PASSWORD в .env — тем же значением,
+      # что стоит в DATABASE_URL. Значение по умолчанию только для локальной работы
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codegolf}
+      POSTGRES_DB: ${POSTGRES_DB:-codegolf}
+    # Скромные настройки под сервер с 2 ГБ памяти
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=50
     # Только с этого компьютера, наружу не торчит
     ports:
       - "127.0.0.1:5432:5432"
@@ -39,7 +48,10 @@ services:
       PISTON_RUN_TIMEOUT: 12000
       PISTON_COMPILE_TIMEOUT: 12000
       PISTON_OUTPUT_MAX_SIZE: 65536
-    mem_limit: 1g
+    # Раннер делит одно ядро с сайтом и базой: без этих лимитов одно
+    # тяжёлое решение участника подвешивает весь сайт
+    mem_limit: 512m
+    cpus: 0.5
     pids_limit: 200
 
 volumes:
