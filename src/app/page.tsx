@@ -123,6 +123,17 @@ async function getHomePageData() {
         })
       : null;
 
+    // Реальные счётчики для блока статистики внизу страницы.
+    // Раньше числа были зашиты в код и расходились с действительностью:
+    // «5+ задач» при 115 и «100+ решений» на пустом сайте
+    const [tasksCount, participantsCount, solutionsCount, recordsCount] = await Promise.all([
+      prisma.task.count({ where: { status: 'published' } }),
+      // Администраторы не в счёт: иначе на пустом сайте висит «1 участник»
+      prisma.user.count({ where: { isAdmin: false } }),
+      prisma.submission.count({ where: { status: 'pass' } }),
+      prisma.bestSubmission.count(),
+    ]);
+
     return {
       weeklyChallenge: weeklyChallenge
         ? {
@@ -153,6 +164,12 @@ async function getHomePageData() {
             bestLength: recommendedBest?.codeLength ?? null,
           }
         : null,
+      stats: {
+        tasks: tasksCount,
+        participants: participantsCount,
+        solutions: solutionsCount,
+        records: recordsCount,
+      },
     };
   } catch (error) {
     console.error('Error fetching home page data:', error);
@@ -161,12 +178,14 @@ async function getHomePageData() {
       globalLeaderboard: [],
       recentRecords: [],
       recommendedTask: null,
+      stats: { tasks: 0, participants: 0, solutions: 0, records: 0 },
     };
   }
 }
 
 export default async function HomePage() {
-  const { weeklyChallenge, globalLeaderboard, recentRecords, recommendedTask } = await getHomePageData();
+  const { weeklyChallenge, globalLeaderboard, recentRecords, recommendedTask, stats } =
+    await getHomePageData();
 
   return (
     <div className="min-h-screen">
@@ -362,15 +381,19 @@ export default async function HomePage() {
       <section className="border-t border-border bg-background-secondary/50">
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <StatCard icon={Code2} label="Задач" value="5+" />
-            <StatCard icon={Users} label="Участников" value={`${Math.max(globalLeaderboard.length, 1)}+`} />
-            <StatCard icon={Trophy} label="Решений" value="100+" />
-            <StatCard icon={Zap} label="Рекордов" value="50+" />
+            <StatCard icon={Code2} label="Задач" value={formatCount(stats.tasks)} />
+            <StatCard icon={Users} label="Участников" value={formatCount(stats.participants)} />
+            <StatCard icon={Trophy} label="Решений" value={formatCount(stats.solutions)} />
+            <StatCard icon={Zap} label="Рекордов" value={formatCount(stats.records)} />
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString('ru-RU');
 }
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
