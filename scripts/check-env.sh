@@ -92,8 +92,28 @@ for name in "${REQUIRED_PROD_ONLY[@]}"; do
   show "${name}" "${value}"
   if [[ -z "${value}" ]]; then STEPIK_MISSING=1; fi
 done
+STEPIK_ID_VAL="$(read_env_var STEPIK_CLIENT_ID || true)"
+STEPIK_SECRET_VAL="$(read_env_var STEPIK_CLIENT_SECRET || true)"
+STEPIK_BAD_LENGTH=0
+# Stepik выдаёт ID из 40 символов и секрет из 128. Секрет вводится скрытно,
+# и двойная вставка незаметна — отсюда секрет вдвое длиннее и ошибка 401
+# при входе. Ловим это здесь, а не на живом участнике
+if [[ -n "${STEPIK_ID_VAL}" && "${#STEPIK_ID_VAL}" -ne 40 ]]; then
+  echo "  ВНИМАНИЕ: Client ID обычно 40 символов, а здесь ${#STEPIK_ID_VAL}"
+  STEPIK_BAD_LENGTH=1
+fi
+if [[ -n "${STEPIK_SECRET_VAL}" && "${#STEPIK_SECRET_VAL}" -ne 128 ]]; then
+  echo "  ВНИМАНИЕ: Client Secret обычно 128 символов, а здесь ${#STEPIK_SECRET_VAL}"
+  if [[ "${#STEPIK_SECRET_VAL}" -eq 256 ]]; then
+    echo "            Ровно вдвое больше — похоже, секрет вставлен дважды"
+  fi
+  STEPIK_BAD_LENGTH=1
+fi
+
 if [[ "${STEPIK_MISSING}" -eq 1 ]]; then
   echo "  ВНИМАНИЕ (не блокирует): ключей нет — работает только вход по email"
+elif [[ "${STEPIK_BAD_LENGTH}" -eq 1 ]]; then
+  echo "  ВНИМАНИЕ: ключи есть, но вход через Stepik, скорее всего, выдаст ошибку"
 else
   echo "  OK: вход через Stepik настроен"
 fi
