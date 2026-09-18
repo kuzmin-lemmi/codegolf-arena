@@ -1,6 +1,14 @@
 // src/lib/piston.ts
 
-const PISTON_API_URL = process.env.PISTON_API_URL || 'https://emkc.org/api/v2/piston';
+// Адрес раннера. В бою обязателен (проверяется в env.ts), локально — контейнер
+// из docker-compose.yml. Публичный emkc.org больше не используется по умолчанию:
+// он стал платным, а код участников не должен молча уходить третьей стороне
+export const PISTON_API_URL = process.env.PISTON_API_URL || 'http://127.0.0.1:2000/api/v2';
+
+// Версия Python в раннере. Должна совпадать с Python в браузере: Pyodide 0.24.1
+// (src/lib/pyodide.ts) — это Python 3.11.3. Иначе решение может пройти локальную
+// проверку и упасть в рейтинге. Ставится в раннер: npm run dev:piston
+export const PISTON_PYTHON_VERSION = '3.11';
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 const MAX_RETRIES = Number(process.env.PISTON_MAX_RETRIES || 2);
 const COMPILE_TIMEOUT_MS = Number(process.env.PISTON_COMPILE_TIMEOUT_MS || 5000);
@@ -47,7 +55,7 @@ export async function executeCode(
         signal,
         body: JSON.stringify({
           language: 'python',
-          version: '3.10',
+          version: PISTON_PYTHON_VERSION,
           files: [
             {
               name: 'main.py',

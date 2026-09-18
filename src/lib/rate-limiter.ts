@@ -209,13 +209,21 @@ export function getClientIP(request: Request): string {
   const ipCandidates: string[] = [];
 
   if (TRUST_PROXY) {
-    const forwarded = request.headers.get('x-forwarded-for');
-    if (forwarded) {
-      ipCandidates.push(...forwarded.split(',').map((x) => x.trim()));
-    }
-
+    // X-Real-IP наш nginx всегда перезаписывает адресом соединения — ему верим
+    // первым. В X-Forwarded-For надёжен только ПОСЛЕДНИЙ элемент: его дописал
+    // ближайший к нам прокси, а всё левее мог прислать сам посетитель.
+    // Раньше брался первый — и лимит отправок обходился подменой заголовка
     const realIp = request.headers.get('x-real-ip');
     if (realIp) ipCandidates.push(realIp.trim());
+
+    const forwarded = request.headers.get('x-forwarded-for');
+    if (forwarded) {
+      const hops = forwarded
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (hops.length > 0) ipCandidates.push(hops[hops.length - 1]);
+    }
 
     const cfIp = request.headers.get('cf-connecting-ip');
     if (cfIp) ipCandidates.push(cfIp.trim());

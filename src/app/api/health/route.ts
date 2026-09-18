@@ -2,10 +2,9 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { PISTON_API_URL, PISTON_PYTHON_VERSION } from '@/lib/piston';
 
 export const dynamic = 'force-dynamic';
-
-const PISTON_API_URL = process.env.PISTON_API_URL || 'http://127.0.0.1:2000/api/v2';
 
 async function checkPiston() {
   const endpoint = `${PISTON_API_URL.replace(/\/$/, '')}/runtimes`;
@@ -19,11 +18,22 @@ async function checkPiston() {
   }
 
   const runtimes = (await response.json()) as Array<{ language?: string; version?: string }>;
-  const pythonRuntime = runtimes.find((runtime) => runtime.language === 'python');
+  // Нужна именно та версия, которую запрашивает раннер: если её нет, все
+  // отправки падают, хотя сам Piston отвечает — такое должно быть видно здесь
+  const pythonRuntime = runtimes.find(
+    (runtime) =>
+      runtime.language === 'python' &&
+      (runtime.version === PISTON_PYTHON_VERSION ||
+        runtime.version?.startsWith(`${PISTON_PYTHON_VERSION}.`))
+  );
+
+  if (!pythonRuntime) {
+    throw new Error(`Python ${PISTON_PYTHON_VERSION} is not installed in Piston`);
+  }
 
   return {
     ok: true,
-    pythonVersion: pythonRuntime?.version || null,
+    pythonVersion: pythonRuntime.version || null,
     runtimesCount: runtimes.length,
   };
 }
@@ -48,7 +58,16 @@ export async function GET() {
         piston:
           pistonState.status === 'fulfilled'
             ? pistonState.value
-            : { ok: false, error: 'Piston unavailable' },
+            : {
+                ok: false,
+                // «Нет нужной версии Python» показываем как есть: это безопасно
+                // и сразу подсказывает, что делать (npm run dev:piston)
+                error:
+                  pistonState.reason instanceof Error &&
+                  pistonState.reason.message.includes('is not installed')
+                    ? pistonState.reason.message
+                    : 'Piston unavailable',
+              },
         ts: new Date().toISOString(),
       },
     },

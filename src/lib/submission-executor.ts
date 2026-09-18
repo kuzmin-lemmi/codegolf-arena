@@ -13,6 +13,9 @@ import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission
 
 const OUTPUT_LIMIT_BYTES = 50 * 1024;
 const TOTAL_TIMEOUT_MS = 10_000;
+// Запасной путь гоняет тесты по одному. Без общего лимита 16 тестов по 4 секунды
+// занимали воркер больше минуты — на сервере с одним ядром это ощутимо
+const FALLBACK_TOTAL_BUDGET_MS = 15_000;
 
 interface BatchExecutionResultItem {
   index: number;
@@ -546,8 +549,22 @@ async function runPerTestFallback(params: {
   prelude?: string;
 }): Promise<BatchExecutionResultItem[]> {
   const results: BatchExecutionResultItem[] = [];
+  const deadline = Date.now() + FALLBACK_TOTAL_BUDGET_MS;
 
   for (const testcase of params.testcases) {
+    const remaining = deadline - Date.now();
+    if (remaining < 500) {
+      results.push({
+        index: testcase.index,
+        isHidden: testcase.isHidden,
+        passed: false,
+        actual: null,
+        expected: testcase.isHidden ? null : testcase.expectedOutput.trim(),
+        error: 'Не хватило общего времени на проверку',
+      });
+      continue;
+    }
+
     const singleCode = generateTestCode(
       params.code,
       params.functionArgs,
@@ -556,7 +573,7 @@ async function runPerTestFallback(params: {
       params.prelude || ''
     );
 
-    const timeout = Math.min(params.perTestTimeoutMs, 4000);
+    const timeout = Math.min(params.perTestTimeoutMs, 4000, remaining);
     const signal = AbortSignal.timeout(timeout);
     const single = await executeCode(singleCode, timeout, signal);
 

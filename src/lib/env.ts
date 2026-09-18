@@ -22,6 +22,10 @@ export function validateRuntimeEnv(): void {
     throw new Error('ALLOW_DEV_LOGIN=true is forbidden in production');
   }
 
+  if (isProd && !isBuildPhase && !process.env.PISTON_API_URL) {
+    throw new Error('PISTON_API_URL is required in production: point it to your Piston runner');
+  }
+
   if (isProd && !process.env.NEXT_PUBLIC_BASE_URL) {
     throw new Error('NEXT_PUBLIC_BASE_URL is required in production');
   }

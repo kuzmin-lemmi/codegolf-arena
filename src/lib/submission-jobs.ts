@@ -5,6 +5,9 @@ import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission
 const MAX_CONCURRENT = 2;
 const MAX_QUEUE = 300;
 const STALE_RUNNING_MS = 2 * 60 * 1000;
+// Проверка, которая раз за разом обрывается (например, решение роняет раннер),
+// раньше возвращалась в очередь бесконечно и занимала одного из двух воркеров
+const MAX_ATTEMPTS = 3;
 
 let activeWorkers = 0;
 let initialized = false;
@@ -207,10 +210,26 @@ async function processJob(jobId: string, payloadJson: string) {
 
 async function recoverStaleRunningJobs() {
   const threshold = new Date(Date.now() - STALE_RUNNING_MS);
+
+  // Исчерпавшие попытки — снимаем с очереди с понятной причиной
   await prisma.submissionJob.updateMany({
     where: {
       status: 'running',
       startedAt: { lt: threshold },
+      attempts: { gte: MAX_ATTEMPTS },
+    },
+    data: {
+      status: 'failed',
+      errorMsg: 'Проверка несколько раз прерывалась. Отправьте решение ещё раз',
+      finishedAt: new Date(),
+    },
+  });
+
+  await prisma.submissionJob.updateMany({
+    where: {
+      status: 'running',
+      startedAt: { lt: threshold },
+      attempts: { lt: MAX_ATTEMPTS },
     },
     data: {
       status: 'queued',
