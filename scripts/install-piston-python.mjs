@@ -11,10 +11,24 @@ async function listPython() {
   return runtimes.filter((r) => r.language === 'python').map((r) => r.version);
 }
 
+// Сразу после запуска контейнера API раннера ещё просыпается —
+// ждём до минуты, а не падаем с первой попытки
+async function waitForRunner() {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      return await listPython();
+    } catch {
+      if (attempt === 1) console.log('Жду, пока раннер проснётся...');
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  return listPython();
+}
+
 async function main() {
   console.log(`Раннер: ${BASE}`);
 
-  const before = await listPython();
+  const before = await waitForRunner();
   if (before.includes(VERSION)) {
     console.log(`OK: Python ${VERSION} уже установлен`);
     return;

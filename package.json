@@ -30,7 +30,7 @@
     "ops:restore": "bash scripts/restore-db.sh",
     "ops:env:check": "bash scripts/check-env.sh",
     "test:sandbox": "npx tsx scripts/verify-sandbox.ts",
-    "dev:up": "docker compose up -d",
+    "dev:up": "docker compose up -d --wait",
     "dev:down": "docker compose down",
     "dev:piston": "node scripts/install-piston-python.mjs"
   },

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PISTON_CONTAINER_NAME="${PISTON_CONTAINER_NAME:-piston}"
+# Имя контейнера из docker-compose.yml
+PISTON_CONTAINER_NAME="${PISTON_CONTAINER_NAME:-codegolf-piston}"
 PISTON_HEALTH_URL="${PISTON_HEALTH_URL:-http://127.0.0.1:2000/api/v2/runtimes}"
 TIMEOUT_SECONDS="${PISTON_WATCHDOG_TIMEOUT_SECONDS:-4}"
 LOG_TAG="piston-watchdog"

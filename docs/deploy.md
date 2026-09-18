@@ -1,196 +1,66 @@
-# Деплой Codegolf Arena (боевой чеклист)
+# Обновление сайта (деплой)
 
-Эта инструкция — рабочий сценарий, которым можно пользоваться каждый раз.
+Короткая инструкция для уже работающего сервера. Установка с нуля —
+в [server-setup.md](server-setup.md), бэкапы — в [backup.md](backup.md).
 
-## 0) Что нужно перед стартом
+## Обычное обновление
 
-- Доступ по SSH к серверу (`deploy@codegolf.ru`)
-- Права на `sudo systemctl restart codegolf`
-- Актуальный код в `origin/main`
-- Корректный `.env` на сервере
-
-Проверка критичных переменных (OAuth и домен):
+На сервере, под пользователем `deploy`:
 
 ```bash
-cd /home/deploy/codegolf-arena
-grep -E "NEXT_PUBLIC_BASE_URL|STEPIK_REDIRECT_URI|STEPIK_CLIENT_ID|STEPIK_CLIENT_SECRET" .env
+cd ~/codegolf-arena && bash scripts/backup-db.sh && bash scripts/deploy-standalone.sh
 ```
 
-В production должно быть так:
+Сначала снимается копия базы, потом скрипт деплоя:
 
-- `NEXT_PUBLIC_BASE_URL="https://codegolf.ru"`
-- `STEPIK_REDIRECT_URI="https://codegolf.ru/api/auth/stepik/callback"`
-- `STEPIK_CLIENT_ID` и `STEPIK_CLIENT_SECRET` не пустые
+1. подтягивает код из `main` (и останавливается, если в папке есть несохранённые правки);
+2. ставит зависимости (`npm ci`) и генерирует клиент Prisma;
+3. проверяет настройки;
+4. применяет **новые миграции** базы из `prisma/migrations`;
+5. **добавляет** новые задачи из `codegolf_tasks.json` — существующие не трогает;
+6. собирает сайт — около полутора минут, всё это время работает старая версия;
+7. перезапускает службу `codegolf` и проверяет `/api/health` изнутри и снаружи.
 
----
+Успешный конец вывода:
 
-## 1) Стандартный деплой (рекомендуется)
+```
+No pending migrations to apply.
+Done: created=0, updated=0, kept=115, skipped=0
+Local health OK
+Public health OK
+Deploy completed successfully.
+```
 
-Подключение и запуск в `tmux`, чтобы деплой не прервался при обрыве SSH:
+## Особые случаи
+
+**Изменилась структура базы.** Локально создаётся миграция
+(`npm run db:migrate:dev -- --name что_меняем`), коммитится вместе с кодом,
+и деплой применит её сам. Никакого `db push` на сервере.
+
+**Изменилась версия Python** (константа `PISTON_PYTHON_VERSION` в `src/lib/piston.ts`).
+Сначала поставьте её в раннер, потом деплойте — иначе в промежутке все
+решения будут падать:
 
 ```bash
-ssh deploy@codegolf.ru
-tmux new -s deploy
-cd /home/deploy
-/home/deploy/deploy_codegolf.sh
+cd ~/codegolf-arena && git pull --ff-only && PISTON_PYTHON_VERSION=3.X.0 npm run dev:piston
 ```
 
-Если сессия оборвалась:
+**Нужно залить задачи из файла поверх базы** (затрёт правки из админки):
 
 ```bash
-ssh deploy@codegolf.ru
-tmux attach -t deploy
+cd ~/codegolf-arena && IMPORT_OVERWRITE=true npm run db:tasks:import-export
 ```
 
----
+**Поменялись файлы в `scripts/systemd/` или `scripts/nginx/`.** Деплой их
+не копирует — это делается от root вручную, командами из
+[server-setup.md](server-setup.md).
 
-## 2) Что должно быть в успешном выводе
+## Если что-то пошло не так
 
-Ожидаемые ключевые этапы:
-
-- `== git sync ==`
-- `== npm ci ==`
-- `== prisma ==`
-- `== build ==`
-- `== restart ==`
-- `LOCAL OK`
-- `DEPLOY OK`
-
----
-
-## 3) Проверка после деплоя
-
-```bash
-sudo systemctl status codegolf --no-pager
-curl -fsS http://127.0.0.1:3000/api/health && echo
-curl -fsS https://codegolf.ru/api/health && echo
-```
-
-Обе проверки `health` должны вернуть JSON с `"success":true`, а внутри `data.piston.ok` должно быть `true`.
-
----
-
-## 3.5) Разовые бэкфиллы после релиза «Этап 4»
-
-Нужны один раз, после первого деплоя с очками за укорачивание и подсчётом
-соревнований (подробности — в [product-stage4.md](product-stage4.md)):
-
-```bash
-cd /home/deploy/codegolf-arena
-npm run db:progress:backfill
-npm run db:competitions:backfill
-```
-
-Первый восстанавливает прогресс («было 47 → стало 31») и защищает текущих лидеров от
-случайного бонуса за первое место, второй заполняет лидерборды прошедших соревнований.
-Очки задним числом не выдаются: если это нужно, запусти
-`RETRO_POINTS=true npm run db:progress:backfill`.
-
----
-
-## 3.1) Piston: безопасный запуск с лимитами
-
-Запускай контейнер через скрипт (с лимитами CPU/RAM и ротацией логов):
-
-```bash
-cd /home/deploy/codegolf-arena
-bash scripts/run-piston.sh
-```
-
-Проверка:
-
-```bash
-docker ps --filter name=piston
-curl -fsS http://127.0.0.1:2000/api/v2/runtimes | head
-```
-
----
-
-## 3.2) Watchdog для Piston (cron)
-
-Скрипт watchdog:
-
-```bash
-cd /home/deploy/codegolf-arena
-chmod +x scripts/piston-watchdog.sh
-```
-
-Добавить в cron пользователя `deploy`:
-
-```bash
-crontab -e
-*/5 * * * * /home/deploy/codegolf-arena/scripts/piston-watchdog.sh
-```
-
-Проверка логов watchdog:
-
-```bash
-journalctl -t piston-watchdog -n 100 --no-pager
-```
-
----
-
-## 4) Частые проблемы и быстрые решения
-
-### 4.1 `Working tree is dirty`
-
-На сервере есть локальные изменения, скрипт остановился.
-
-Безопасно:
-
-```bash
-cd /home/deploy/codegolf-arena
-git stash push -u -m "before deploy"
-/home/deploy/deploy_codegolf.sh
-```
-
-### 4.2 OAuth кидает на `localhost`
-
-Проверь `.env` на сервере:
-
-```bash
-cd /home/deploy/codegolf-arena
-grep -E "NEXT_PUBLIC_BASE_URL|STEPIK_REDIRECT_URI" .env
-```
-
-Должен быть только домен `https://codegolf.ru`, не `localhost`.
-
-### 4.3 Сервис не поднялся после рестарта
-
-```bash
-sudo journalctl -u codegolf -n 120 --no-pager
-```
-
-Ищи первые ошибки после `Started Codegolf Arena`.
-
----
-
-## 5) Быстрый откат
-
-Если нужно срочно откатить релиз:
-
-```bash
-cd /home/deploy/codegolf-arena
-git log --oneline -n 5
-git reset --hard <COMMIT_BEFORE_BAD_RELEASE>
-/home/deploy/deploy_codegolf.sh
-```
-
-Важно: `reset --hard` удалит локальные изменения.
-
----
-
-## 6) Минимальный ежедневный сценарий (коротко)
-
-```bash
-ssh deploy@codegolf.ru
-tmux new -s deploy
-cd /home/deploy
-/home/deploy/deploy_codegolf.sh
-```
-
-Потом проверка:
-
-```bash
-curl -fsS https://codegolf.ru/api/health && echo
-```
+| Симптом | Что смотреть |
+|---|---|
+| Скрипт остановился: «Working tree has local changes» | `git status` — чьи-то несохранённые правки на сервере |
+| Упала сборка | `free -h` — хватает ли памяти и подкачки |
+| «Local health failed» | `journalctl -u codegolf -n 50 --no-pager` |
+| В `/api/health` раннер не в порядке | `docker compose ps`; если написано, что нет версии Python — `npm run dev:piston` |
+| Нужно откатиться | в репозитории отменить плохой коммит (`git revert <коммит>`), запушить в `main` и задеплоить заново. Не делайте `git checkout` старого коммита на сервере — деплой-скрипт тогда упадёт на `git pull`. Базу при необходимости — из копии по [backup.md](backup.md) |
