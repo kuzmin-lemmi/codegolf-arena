@@ -33,6 +33,13 @@ interface RawTask {
   testcases: RawTestcase[];
 }
 
+// По умолчанию импорт только ДОБАВЛЯЕТ задачи, которых ещё нет в базе,
+// и не трогает существующие. Скрипт запускается при каждом деплое, и прежняя
+// перезапись молча откатывала правки из админки: условия, тесты, снятие
+// задачи с публикации. Полная перезапись из файла — только осознанно:
+//   IMPORT_OVERWRITE=true npm run db:tasks:import-export
+const OVERWRITE = process.env.IMPORT_OVERWRITE === 'true';
+
 async function main() {
   const jsonPath = path.resolve(process.cwd(), 'codegolf_tasks.json');
   console.log(`Reading: ${jsonPath}`);
@@ -45,10 +52,16 @@ async function main() {
   }
 
   console.log(`Found ${tasks.length} tasks`);
+  console.log(
+    OVERWRITE
+      ? 'Mode: OVERWRITE — existing tasks will be replaced from the file'
+      : 'Mode: add new tasks only — existing tasks are left untouched'
+  );
 
   let created = 0;
   let updated = 0;
   let skipped = 0;
+  let kept = 0;
 
   for (const task of tasks) {
     if (!task.slug || !task.title || !task.statementMd || !task.functionSignature) {
@@ -110,6 +123,11 @@ async function main() {
           select: { id: true },
         });
 
+        if (existing && !OVERWRITE) {
+          kept += 1;
+          return;
+        }
+
         const saved = existing
           ? await tx.task.update({ where: { id: existing.id }, data: payload })
           : await tx.task.create({ data: { ...payload, slug: task.slug } });
@@ -143,7 +161,7 @@ async function main() {
   }
 
   console.log('');
-  console.log(`Done: created=${created}, updated=${updated}, skipped=${skipped}`);
+  console.log(`Done: created=${created}, updated=${updated}, kept=${kept}, skipped=${skipped}`);
 }
 
 main()
