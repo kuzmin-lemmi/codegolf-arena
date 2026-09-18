@@ -52,7 +52,8 @@ sudo systemctl restart "$SERVICE_NAME"
 
 echo "[9/9] Health checks"
 for i in {1..30}; do
-  if curl -fsS "$HEALTH_LOCAL" > /dev/null; then
+  # Первые попытки могут прийтись на момент перезапуска — их ошибки не показываем
+  if curl -fsS "$HEALTH_LOCAL" > /dev/null 2>&1; then
     echo "Local health OK"
     break
   fi
