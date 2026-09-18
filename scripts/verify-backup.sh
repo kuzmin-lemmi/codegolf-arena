@@ -26,6 +26,30 @@ read_env_var() {
   printf '%s' "${value}"
 }
 
+# Prisma дописывает в DATABASE_URL свои параметры (?schema=public и др.),
+# которых не знают pg_dump/psql/pg_restore — они падают с
+# "invalid URI query parameter". Убираем их, остальные параметры сохраняем
+libpq_url() {
+  local url="$1" base query kept="" param
+  local -a params
+  base="${url%%\?*}"
+  if [[ "${url}" == *\?* ]]; then
+    query="${url#*\?}"
+    IFS='&' read -ra params <<< "${query}"
+    for param in "${params[@]}"; do
+      case "${param%%=*}" in
+        schema|connection_limit|pool_timeout|pgbouncer|socket_timeout|statement_cache_size|sslaccept|sslidentity) ;;
+        *) kept="${kept:+${kept}&}${param}" ;;
+      esac
+    done
+  fi
+  if [[ -n "${kept}" ]]; then
+    printf '%s?%s' "${base}" "${kept}"
+  else
+    printf '%s' "${base}"
+  fi
+}
+
 count_rows() {
   local url="$1" table="$2"
   psql "${url}" -tAc "SELECT count(*) FROM ${table}" 2>/dev/null || echo "-"
@@ -34,6 +58,7 @@ count_rows() {
 echo "[1/5] Настройки"
 DATABASE_URL="${DATABASE_URL:-$(read_env_var DATABASE_URL || true)}"
 [[ -n "${DATABASE_URL}" ]] || fail "DATABASE_URL не найден"
+DATABASE_URL="$(libpq_url "${DATABASE_URL}")"
 command -v psql       >/dev/null 2>&1 || fail "psql не установлен (apt install postgresql-client)"
 command -v pg_restore >/dev/null 2>&1 || fail "pg_restore не установлен"
 
