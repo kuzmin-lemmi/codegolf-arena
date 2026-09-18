@@ -33,10 +33,13 @@ npm run db:generate
 echo "[4/9] Preflight checks"
 NODE_ENV=production npm run ops:preflight:postgres
 
-echo "[5/9] Apply DB schema"
-npm run db:push
+echo "[5/9] Apply DB migrations"
+# Только миграции из prisma/migrations: у каждого изменения схемы есть история
+npm run db:migrate:deploy
 
-echo "[5.5/9] Import tasks from codegolf_tasks.json"
+echo "[5.5/9] Add new tasks from codegolf_tasks.json"
+# Добавляет только новые задачи. Существующие — вместе с правками из админки —
+# не трогает (полная перезапись: IMPORT_OVERWRITE=true)
 npm run db:tasks:import-export
 
 echo "[6/9] Build"

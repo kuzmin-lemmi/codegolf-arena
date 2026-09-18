@@ -10,6 +10,20 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // Очищаем БД
+  // Защита живых данных: сид полностью очищает базу. На свежей базе это
+  // нормально, а на работающем сайте уничтожило бы участников и рекорды
+  const [existingSubmissions, existingPlayers] = await Promise.all([
+    prisma.submission.count(),
+    prisma.user.count({ where: { isAdmin: false } }),
+  ]);
+  if ((existingSubmissions > 0 || existingPlayers > 0) && process.env.SEED_FORCE !== 'true') {
+    console.error(
+      `ОТКАЗ: в базе уже есть данные (участников: ${existingPlayers}, отправок: ${existingSubmissions}).`
+    );
+    console.error('Сид стирает всё. Если это действительно нужно: SEED_FORCE=true npm run db:seed');
+    process.exit(1);
+  }
+
   await prisma.competitionEntry.deleteMany({});
   await prisma.competitionTask.deleteMany({});
   await prisma.competition.deleteMany({});
