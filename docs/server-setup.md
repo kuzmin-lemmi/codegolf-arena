@@ -43,10 +43,12 @@ bash /root/server-bootstrap.sh
 Проверка:
 
 ```bash
-docker --version && node --version && nginx -v && free -h | head -2
+docker compose version && node --version && nginx -v && free -h && ufw status
 ```
 
-В выводе `free -h` в строке `Swap` должно быть 2 ГБ.
+В выводе `free -h` в строке `Swap` должно быть 2 ГБ, а `ufw` — `active`
+с открытыми 22, 80 и 443. Если скрипт оборвался на шаге firewall, запустите
+его ещё раз — он безопасно пропустит уже сделанное.
 
 ---
 
@@ -116,8 +118,13 @@ Stepik не совпадает с адресом сайта.
 cd ~/codegolf-arena && docker compose up -d
 ```
 
-Первый запуск скачивает образы, это несколько минут. Затем ставим Python
-в раннер — свежий контейнер приходит без него:
+Первый запуск скачивает образы, это несколько минут. Если `docker` ответит
+`permission denied` — выйдите (`exit`) и снова зайдите через `su - deploy`:
+членство в группе docker подхватывается при новом входе.
+
+Затем ставим Python в раннер — свежий контейнер приходит без него. Ставится
+Python 3.11: та же версия, что работает у участника в браузере, иначе
+решение могло бы пройти локальную проверку и упасть в рейтинге:
 
 ```bash
 npm run dev:piston
@@ -134,14 +141,15 @@ docker compose ps && curl -fsS http://127.0.0.1:2000/api/v2/runtimes && echo
 ## Шаг 4. Таблицы, задачи, администратор
 
 ```bash
-cd ~/codegolf-arena && npm ci && npm run db:generate && npm run db:push
+cd ~/codegolf-arena && npm ci && npm run db:generate && npm run db:migrate:deploy
 ```
 
 Создаём администратора:
 
 > ⚠️ **`db:seed` полностью очищает базу.** Эта команда нужна ровно один раз,
-> сейчас, пока база пустая. После запуска сайта её вызов уничтожит всех
-> участников и все рекорды.
+> сейчас, пока база пустая. На работающем сайте она откажется запускаться,
+> если в базе уже есть участники или решения, — но надеяться на эту защиту
+> не стоит: больше эта команда вам не понадобится.
 
 ```bash
 npm run db:seed
@@ -172,10 +180,16 @@ cd ~/codegolf-arena && npm run build
 cd ~/codegolf-arena && mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/ && cp -R public .next/standalone/
 ```
 
-Ставим службу, чтобы сайт поднимался сам после перезагрузки:
+Ставим службу, чтобы сайт поднимался сам после перезагрузки. **Это делается
+от root** — у пользователя `deploy` намеренно есть право только перезапускать
+уже установленную службу, но не ставить новые:
 
 ```bash
-sudo cp ~/codegolf-arena/scripts/systemd/codegolf.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now codegolf
+exit
+```
+
+```bash
+cp /home/deploy/codegolf-arena/scripts/systemd/codegolf.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now codegolf
 ```
 
 Проверка:
@@ -191,19 +205,17 @@ curl -fsS http://127.0.0.1:3000/api/health && echo
 
 ## Шаг 6. Домен и HTTPS
 
-Подставляем домен в заготовку nginx и включаем её:
+Тоже от root. Подставляем домен в заготовку nginx и включаем её
+(если есть `www`-вариант, перечислите оба через пробел):
 
 ```bash
-sudo sed 's/__DOMAIN__/__ВАШ_ДОМЕН__/g' ~/codegolf-arena/scripts/nginx/codegolf.conf | sudo tee /etc/nginx/sites-available/codegolf > /dev/null
-sudo ln -sf /etc/nginx/sites-available/codegolf /etc/nginx/sites-enabled/codegolf
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+sed 's/__DOMAIN__/__ВАШ_ДОМЕН__ www.__ВАШ_ДОМЕН__/g' /home/deploy/codegolf-arena/scripts/nginx/codegolf.conf > /etc/nginx/sites-available/codegolf && ln -sf /etc/nginx/sites-available/codegolf /etc/nginx/sites-enabled/codegolf && rm -f /etc/nginx/sites-enabled/default && nginx -t && systemctl reload nginx
 ```
 
 Теперь сайт открывается по домену по обычному http. Выдаём сертификат:
 
 ```bash
-sudo certbot --nginx -d __ВАШ_ДОМЕН__
+certbot --nginx -d __ВАШ_ДОМЕН__ -d www.__ВАШ_ДОМЕН__
 ```
 
 Certbot спросит почту, согласие с условиями и предложит включить
@@ -220,19 +232,21 @@ curl -fsS https://__ВАШ_ДОМЕН__/api/health && echo
 
 ## Шаг 7. Бэкапы
 
-Первая копия и проверка, что она разворачивается:
+Первая копия и проверка, что она разворачивается (от `deploy`):
 
 ```bash
-cd ~/codegolf-arena && bash scripts/backup-db.sh && bash scripts/verify-backup.sh
+su - deploy -c 'cd ~/codegolf-arena && bash scripts/backup-db.sh && bash scripts/verify-backup.sh'
 ```
 
-Включаем ежедневные копии в 03:30:
+Включаем ежедневные копии в 03:30 (от root):
 
 ```bash
-sudo cp ~/codegolf-arena/scripts/systemd/codegolf-backup.* /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now codegolf-backup.timer
+cp /home/deploy/codegolf-arena/scripts/systemd/codegolf-backup.* /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now codegolf-backup.timer
 ```
 
-Подробности — в [backup.md](backup.md).
+Затем — **копии вне сервера и мониторинг**: без них копии лежат на том же
+диске, что и база, а о падении сайта вы узнаете от пользователей. Настройка —
+в [backup.md](backup.md), разделы «Копии вне сервера» и «Мониторинг».
 
 ---
 
@@ -277,9 +291,22 @@ https://__ВАШ_ДОМЕН__/api/auth/stepik/callback
 cd ~/codegolf-arena && bash scripts/backup-db.sh && HEALTH_PUBLIC="https://__ВАШ_ДОМЕН__/api/health" bash scripts/deploy-standalone.sh
 ```
 
-Скрипт сам подтянет изменения, применит схему, соберёт сайт и перезапустит
-службу. Он останавливается, если в папке есть несохранённые правки —
-это защита от потери чужой работы.
+Скрипт сам подтянет изменения, применит миграции базы, добавит новые задачи
+из `codegolf_tasks.json`, соберёт сайт и перезапустит службу. Он
+останавливается, если в папке есть несохранённые правки, — это защита от
+потери чужой работы.
+
+Что важно знать про обновления:
+
+- **Структура базы меняется только миграциями** из `prisma/migrations`.
+  У каждого изменения есть история, и деплой применяет только новые.
+- **Задачи из файла добавляются, но не перезаписываются.** Правки условий
+  и тестов, сделанные в админке, деплой больше не откатывает. Если нужно
+  именно залить задачи из файла поверх базы: `IMPORT_OVERWRITE=true npm run db:tasks:import-export`.
+- **Если меняется версия Python в раннере** (она задана в `src/lib/piston.ts`),
+  сначала поставьте её — `npm run dev:piston`, — и только потом деплойте.
+  Иначе между деплоем и установкой все решения будут падать. Проверка
+  `/api/health` в этом случае прямо напишет, какой версии не хватает.
 
 ---
 

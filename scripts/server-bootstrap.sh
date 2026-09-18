@@ -49,7 +49,8 @@ apt-get update -qq
 ok "список обновлён"
 
 step "3/8 Базовые пакеты"
-apt-get install -y -qq ca-certificates curl git gnupg nginx ufw postgresql-client certbot python3-certbot-nginx tmux htop unattended-upgrades
+# rclone — отправка зашифрованных копий базы во внешнее хранилище
+apt-get install -y -qq ca-certificates curl git gnupg nginx ufw postgresql-client certbot python3-certbot-nginx rclone tmux htop unattended-upgrades
 ok "пакеты установлены"
 
 step "4/8 Docker (база и раннер кода)"

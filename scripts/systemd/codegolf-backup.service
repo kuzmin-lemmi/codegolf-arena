@@ -10,7 +10,11 @@ Group=deploy
 WorkingDirectory=/home/deploy/codegolf-arena
 Environment=BACKUP_DIR=/home/deploy/backups
 Environment=BACKUP_KEEP_DAYS=14
+Environment=OFFSITE_ENV=/home/deploy/.config/codegolf/offsite.env
 ExecStart=/usr/bin/env bash /home/deploy/codegolf-arena/scripts/backup-db.sh
+# Сразу после локальной копии — отправка её вне сервера. Если хранилище
+# не настроено, скрипт сообщит об этом и завершится без ошибки
+ExecStart=/usr/bin/env bash /home/deploy/codegolf-arena/scripts/backup-offsite.sh
 # Не даём бэкапу мешать сайту
 Nice=10
 IOSchedulingClass=idle
