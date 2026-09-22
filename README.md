@@ -12,6 +12,7 @@ Pyodide (Python 3.11 в браузере).
 |---|---|
 | ИИ-ассистенту или разработчику | [AGENTS.md](AGENTS.md) — устройство, правила, сервер, грабли |
 | Что сделано и что дальше | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Куда развивать проект | [docs/plan.md](docs/plan.md) — анализ, приоритеты, этапы |
 | Обновить сайт | [docs/deploy.md](docs/deploy.md) |
 | Поставить на новый сервер | [docs/server-setup.md](docs/server-setup.md) |
 | Бэкапы, восстановление, мониторинг | [docs/backup.md](docs/backup.md) |
