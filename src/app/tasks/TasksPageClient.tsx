@@ -21,6 +21,7 @@ interface TaskListItem {
   createdAt: Date | string;
   participantsCount: number;
   bestLength: number | null;
+  hasCsharp?: boolean;
 }
 
 interface TasksPageClientProps {
@@ -257,6 +258,14 @@ function TaskCard({ task, solved }: { task: TaskListItem; solved: boolean }) {
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-accent-yellow/20 text-accent-yellow">
                 <Trophy className="w-3 h-3" />
                 Турнир
+              </span>
+            )}
+            {task.hasCsharp && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30"
+                title="Задачу можно решать и на C# (проба)"
+              >
+                + C#
               </span>
             )}
           </div>

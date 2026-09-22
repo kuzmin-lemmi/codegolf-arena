@@ -42,6 +42,12 @@ echo "[5.5/9] Add new tasks from codegolf_tasks.json"
 # не трогает (полная перезапись: IMPORT_OVERWRITE=true)
 npm run db:tasks:import-export
 
+echo "[5.6/9] C# signatures for trial tasks"
+# Проба C#: заполняет только пустые сигнатуры из prisma/csharp-signatures.json.
+# Сбой не останавливает деплой: задача с неподходящей сигнатурой сама
+# закрывается для C# с понятной ошибкой, а Python не затронут
+npm run db:tasks:csharp || echo "WARN: C#-сигнатуры не записаны — см. вывод выше"
+
 echo "[6/9] Build"
 npm run build
 

@@ -32,4 +32,6 @@ export interface TaskSubmitPayload {
   taskSlug: string;
   code: string;
   envId?: string; // EnvId окружения, выбранного пользователем
+  // Нет поля — Python. C# (проба) проверяется в csharp-submission.ts, вне зачёта
+  language?: 'python' | 'csharp';
 }

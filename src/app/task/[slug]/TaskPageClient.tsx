@@ -2,11 +2,14 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui';
 import { SubmitForm } from '@/components/task/SubmitForm';
 import { TaskTabs } from '@/components/task/TaskTabs';
+import { CsharpTaskView } from '@/components/task/CsharpTaskView';
+import { LanguageSwitch, type SolutionLanguage } from '@/components/task/LanguageSwitch';
+import type { CsharpSignature } from '@/lib/csharp';
 import { useAuth } from '@/context/AuthContext';
 import { toPythonLiteral } from '@/lib/python-serializer';
 import { pluralizeRu } from '@/lib/utils';
@@ -36,6 +39,8 @@ interface TaskPageClientProps {
   leaderboard: LeaderboardEntry[];
   currentUserRank?: number;
   userBest?: TaskUserBest | null;
+  // Проба C#: сигнатура, если задача открыта для C# и C# включён
+  csharp?: CsharpSignature | null;
 }
 
 export function TaskPageClient({
@@ -51,11 +56,50 @@ export function TaskPageClient({
   leaderboard,
   currentUserRank,
   userBest,
+  csharp = null,
 }: TaskPageClientProps) {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
   const [solutionsRefreshKey, setSolutionsRefreshKey] = useState(0);
   const [editorLength, setEditorLength] = useState<number | null>(null);
+  const [language, setLanguage] = useState<SolutionLanguage>('python');
+
+  // Язык запоминается в браузере; ?lang=csharp в ссылке открывает сразу C#
+  useEffect(() => {
+    if (!csharp) return;
+    let preferred: string | null = new URLSearchParams(window.location.search).get('lang');
+    if (!preferred) {
+      try {
+        preferred = window.localStorage.getItem('solution_language');
+      } catch {
+        preferred = null;
+      }
+    }
+    if (preferred === 'csharp') setLanguage('csharp');
+  }, [csharp]);
+
+  const chooseLanguage = (next: SolutionLanguage) => {
+    setLanguage(next);
+    try {
+      window.localStorage.setItem('solution_language', next);
+    } catch {
+      // Хранилище недоступно — выбор просто не запомнится
+    }
+  };
+
+  const switcher = csharp ? <LanguageSwitch value={language} onChange={chooseLanguage} /> : null;
+
+  if (csharp && language === 'csharp') {
+    return (
+      <CsharpTaskView
+        taskSlug={taskSlug}
+        signature={csharp}
+        isLoggedIn={isLoggedIn}
+        switcher={switcher}
+        testcases={testcases}
+      />
+    );
+  }
 
   const formatArgs = (args: any[]) =>
     args.length > 0 ? args.map(toPythonLiteral).join(', ') : '';
@@ -89,7 +133,10 @@ export function TaskPageClient({
   return (
     <div className="space-y-6">
       <Card padding="lg">
-        <h2 className="text-base sm:text-lg font-semibold mb-4">Твоё решение</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-base sm:text-lg font-semibold">Твоё решение</h2>
+          {switcher}
+        </div>
 
         {/* Цель по длине: цифры показываем, код решений — нет */}
         <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary space-y-2">

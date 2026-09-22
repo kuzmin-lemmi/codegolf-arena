@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { TasksPageClient } from './TasksPageClient';
 import type { TaskMode, TaskTier } from '@/types';
 import { normalizeTaskTopics } from '@/lib/task-topics';
+import { parseCsharpSignature } from '@/lib/csharp';
+import { isCsharpEnabled } from '@/lib/csharp-runner';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -17,6 +19,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 async function getTasks() {
+  const csharpEnabled = isCsharpEnabled();
   try {
     const tasks = await prisma.task.findMany({
       where: { status: 'published' },
@@ -30,6 +33,7 @@ async function getTasks() {
         functionSignature: true,
         statementMd: true,
         constraintsJson: true,
+        csharpSignature: true,
         createdAt: true,
         _count: {
           select: { bestSubmissions: true },
@@ -61,6 +65,8 @@ async function getTasks() {
           createdAt: task.createdAt,
           participantsCount: task._count.bestSubmissions,
           bestLength: bestSubmission?.codeLength || null,
+          // Проба C#: метка у задач, которые можно решать и на C#
+          hasCsharp: csharpEnabled && parseCsharpSignature(task.csharpSignature) !== null,
         };
       })
     );

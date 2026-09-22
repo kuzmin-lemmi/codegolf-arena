@@ -6,6 +6,8 @@ import {
   CheckCircle, XCircle, Zap, Clock 
 } from 'lucide-react';
 import type { Metadata } from 'next';
+import { CSHARP_USINGS } from '@/lib/csharp';
+import { isCsharpEnabled } from '@/lib/csharp-runner';
 
 export const metadata: Metadata = {
   title: 'Правила — Арена однострочников',
@@ -14,6 +16,10 @@ export const metadata: Metadata = {
     canonical: '/rules',
   },
 };
+
+// Раздел про C# зависит от CSHARP_ENABLED: без обновления страница застыла бы
+// в том виде, в каком её собрали, и не заметила бы включения C# на сервере
+export const revalidate = 60;
 
 export default function RulesPage() {
   return (
@@ -88,6 +94,57 @@ export default function RulesPage() {
               </div>
             </Card>
           </section>
+
+          {/* Проба C# */}
+          {isCsharpEnabled() && (
+            <section>
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                <Code2 className="w-6 h-6 text-accent-blue" />
+                Проба: решения на C#
+              </h2>
+              <Card padding="lg">
+                <p className="text-text-secondary mb-4">
+                  Задачи с меткой <strong>«+ C#»</strong> можно решать и на C#. Правила те же: одно
+                  выражение, короче — выше. Язык переключается над редактором.
+                </p>
+
+                <div className="bg-background-tertiary rounded-lg p-4 mb-4">
+                  <div className="text-sm text-text-muted mb-2">Пример задачи:</div>
+                  <code className="text-accent-blue">static int Solution(int[] nums)</code>
+                  <div className="text-sm text-text-muted mt-2">Твой код:</div>
+                  <code className="text-accent-green">nums.Sum()</code>
+                  <div className="text-sm text-text-muted mt-2">Что выполняется на сервере:</div>
+                  <pre className="text-sm font-mono text-text-secondary">
+{`static int Solution(int[] nums) => nums.Sum();`}
+                  </pre>
+                </div>
+
+                <ul className="space-y-2 text-sm text-text-secondary">
+                  <li>
+                    • У C# <strong>своя таблица рекордов</strong>: сравнивать длину с Python нечестно,
+                    языки разные.
+                  </li>
+                  <li>
+                    • Пока это проба: <strong>очков за C# нет</strong>, в общий рейтинг, соревнования
+                    и задачу недели он не идёт.
+                  </li>
+                  <li>
+                    • Язык — C# 9 (mono 6.12): LINQ, лямбды, <code>switch</code>-выражения,{' '}
+                    <code>a[^1]</code>. Подключено: <code>{CSHARP_USINGS.join(', ')}</code>.
+                    Рекурсия — через <code>Solution(...)</code>.
+                  </li>
+                  <li>
+                    • Запрещено: <code>;</code>, комментарии, <code>System.</code>, <code>Console</code>,{' '}
+                    <code>Environment</code>, рефлексия (<code>typeof</code>, <code>GetType</code>…),{' '}
+                    <code>Main</code>.
+                  </li>
+                  <li>
+                    • Проверка идёт на сервере и занимает несколько секунд: C# сначала компилируется.
+                  </li>
+                </ul>
+              </Card>
+            </section>
+          )}
 
           {/* Ограничения */}
           <section>

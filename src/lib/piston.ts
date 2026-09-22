@@ -24,7 +24,8 @@ interface PistonResponse {
   compile?: {
     stdout: string;
     stderr: string;
-    code: number;
+    code: number | null;
+    signal?: string | null;
   };
 }
 
@@ -36,12 +37,26 @@ interface ExecuteResult {
   exitCode: number;
   errorKind: 'none' | 'runtime' | 'infra' | 'timeout';
   httpStatus?: number;
+  // Только для компилируемых языков (C#): сборка не прошла
+  compileFailed?: boolean;
+  compileOutput?: string;
+  compileSignal?: string | null;
+}
+
+// По умолчанию — Python, как и раньше. C# передаёт свой язык, stdin и таймаут сборки
+export interface ExecuteOptions {
+  language?: string;
+  version?: string;
+  fileName?: string;
+  stdin?: string;
+  compileTimeoutMs?: number;
 }
 
 export async function executeCode(
   code: string,
   timeout: number = 2000,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: ExecuteOptions = {}
 ): Promise<ExecuteResult> {
   let attempt = 0;
 
@@ -54,16 +69,17 @@ export async function executeCode(
         },
         signal,
         body: JSON.stringify({
-          language: 'python',
-          version: PISTON_PYTHON_VERSION,
+          language: options.language || 'python',
+          version: options.version || PISTON_PYTHON_VERSION,
           files: [
             {
-              name: 'main.py',
+              name: options.fileName || 'main.py',
               content: code,
             },
           ],
+          ...(options.stdin !== undefined ? { stdin: options.stdin } : {}),
           run_timeout: timeout,
-          compile_timeout: COMPILE_TIMEOUT_MS,
+          compile_timeout: options.compileTimeoutMs || COMPILE_TIMEOUT_MS,
         }),
       });
 
@@ -91,13 +107,18 @@ export async function executeCode(
       const runStderr = data.run.stderr || '';
 
       if (data.compile && data.compile.code !== 0) {
+        // mono пишет ошибки компиляции в stdout, а не в stderr
+        const compileOutput = [data.compile.stdout, data.compile.stderr].filter(Boolean).join('\n');
         return {
           output: '',
           stdout: '',
           stderr: data.compile.stderr || '',
-          error: data.compile.stderr || 'Compilation error',
-          exitCode: data.compile.code,
+          error: data.compile.stderr || compileOutput || 'Compilation error',
+          exitCode: data.compile.code ?? -1,
           errorKind: 'runtime',
+          compileFailed: true,
+          compileOutput,
+          compileSignal: data.compile.signal ?? null,
         };
       }
 

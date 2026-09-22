@@ -1,0 +1,14 @@
+{
+  "string-len": {"args": [["s", "string"]], "returns": "int"},
+  "is-palindrome": {"args": [["s", "string"]], "returns": "bool"},
+  "is-anagram": {"args": [["a", "string"], ["b", "string"]], "returns": "bool"},
+  "product": {"args": [["nums", "int[]"]], "returns": "int"},
+  "average": {"args": [["nums", "int[]"]], "returns": "double"},
+  "unique-sorted": {"args": [["lst", "int[]"]], "returns": "int[]"},
+  "split-string": {"args": [["s", "string"], ["sep", "string"]], "returns": "string[]"},
+  "join-strings": {"args": [["lst", "string[]"], ["sep", "string"]], "returns": "string"},
+  "decimal-to-binary": {"args": [["n", "int"]], "returns": "string"},
+  "transpose-matrix": {"args": [["m", "int[][]"]], "returns": "int[][]"},
+  "binary-to-decimal": {"args": [["s", "string"]], "returns": "int"},
+  "count-vowels": {"args": [["s", "string"]], "returns": "int"}
+}

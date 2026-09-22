@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { PISTON_API_URL, PISTON_PYTHON_VERSION } from '@/lib/piston';
+import { CSHARP_PISTON_LANGUAGE, CSHARP_PISTON_VERSION, isCsharpEnabled } from '@/lib/csharp-runner';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,19 @@ async function checkPiston() {
     throw new Error(`Python ${PISTON_PYTHON_VERSION} is not installed in Piston`);
   }
 
+  // Проба C#: пока C# выключен, его отсутствие в раннере — не поломка
+  const csharpRuntime = runtimes.find(
+    (runtime) => runtime.language === CSHARP_PISTON_LANGUAGE && runtime.version === CSHARP_PISTON_VERSION
+  );
+  if (isCsharpEnabled() && !csharpRuntime) {
+    throw new Error(`C# ${CSHARP_PISTON_VERSION} is not installed in Piston`);
+  }
+
   return {
     ok: true,
     pythonVersion: pythonRuntime.version || null,
+    csharpVersion: csharpRuntime?.version || null,
+    csharpEnabled: isCsharpEnabled(),
     runtimesCount: runtimes.length,
   };
 }
@@ -60,7 +71,7 @@ export async function GET() {
             ? pistonState.value
             : {
                 ok: false,
-                // «Нет нужной версии Python» показываем как есть: это безопасно
+                // «Нет нужной версии Python / C#» показываем как есть: это безопасно
                 // и сразу подсказывает, что делать (npm run dev:piston)
                 error:
                   pistonState.reason instanceof Error &&

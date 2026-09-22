@@ -8,6 +8,8 @@ import { TaskStatement } from '@/components/task/TaskStatement';
 import { TaskPageClient } from './TaskPageClient';
 import { prisma } from '@/lib/db';
 import { getCurrentUserFromCookies } from '@/lib/auth';
+import { parseCsharpSignature } from '@/lib/csharp';
+import { isCsharpEnabled } from '@/lib/csharp-runner';
 import type { Metadata } from 'next';
 import type { Task, TaskConstraints, TaskMode, TaskStatus, TaskTier } from '@/types';
 
@@ -126,6 +128,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
   // Про скрытые тесты наружу уходит только их количество
   const hiddenTestsCount = Math.max(0, task._count.testcases - task.testcases.length);
 
+  // Проба C#: переключатель языка — только у задач с C#-сигнатурой и при включённом C#
+  const csharpSignature = isCsharpEnabled() ? parseCsharpSignature(task.csharpSignature) : null;
+
   // Свой рекорд и своё место: из-за этого страница рендерится на каждый запрос,
   // зато лидерборд и цель по длине всегда актуальные
   const currentUser = await getCurrentUserFromCookies();
@@ -232,6 +237,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 leaderboard={leaderboard}
                 currentUserRank={currentUserRank}
                 userBest={userBest}
+                csharp={csharpSignature}
               />
             </div>
         </div>
