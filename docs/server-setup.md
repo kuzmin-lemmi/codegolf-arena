@@ -316,7 +316,7 @@ cd ~/codegolf-arena && bash scripts/backup-db.sh && HEALTH_PUBLIC="https://__В�
 |---|---|
 | Сайт не открывается | `sudo systemctl status codegolf`, `journalctl -u codegolf -n 50 --no-pager` |
 | «Runner temporarily unavailable» при отправке | `docker compose ps`, `curl http://127.0.0.1:2000/api/v2/runtimes` |
-| Раннер отвечает, но решения падают | не установлен Python: `npm run dev:piston` |
+| Раннер отвечает, но решения падают | не установлен Python (или mono для C#): `npm run dev:piston` |
 | Сборка падает без ошибки | не хватило памяти: `free -h`, проверьте подкачку |
 | Ошибка про настройки при запуске | `bash scripts/check-env.sh` |
 | nginx не стартует | `sudo nginx -t` |

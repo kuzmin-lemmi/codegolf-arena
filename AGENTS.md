@@ -28,6 +28,11 @@
 Tailwind. Код участников выполняется в **Piston** (свой контейнер, Python 3.11).
 Локальная проверка в браузере — **Pyodide 0.24.1** (тоже Python 3.11).
 
+**Проба C#** ([docs/csharp-trial.md](docs/csharp-trial.md)): у задач с C#-сигнатурой
+можно решать и на C# (mono 6.12 в том же Piston). Включается `CSHARP_ENABLED=true`.
+C# идёт **вне зачёта**: свои таблицы `language_submissions` / `language_best_submissions`,
+без очков, соревнований и уведомлений.
+
 **Путь решения:**
 
 1. В браузере — черновая проверка через Pyodide, только на открытых тестах.
@@ -49,6 +54,9 @@ Tailwind. Код участников выполняется в **Piston** (св
 | `src/lib/submission-executor.ts` | прогон тестов, подсчёт мест и очков |
 | `src/lib/piston.ts` | адрес раннера и версия Python (`PISTON_PYTHON_VERSION`) |
 | `src/lib/pyodide.ts` | Python в браузере, версия Pyodide |
+| `src/lib/csharp-runner.ts` | проба C#: сборка проверяющей программы и прогон — **так же чувствительно, как python-serializer** |
+| `src/lib/csharp.ts`, `csharp-submission.ts` | проба C#: сигнатуры и запреты / проверка и запись рекордов C# |
+| `prisma/csharp-signatures.json` | какие задачи открыты для C# и с какими типами |
 | `src/lib/environments.ts` | окружения (`math`, `itertools`…): что подключается к решению |
 | `src/lib/points.ts`, `competitions.ts`, `notifications.ts` | очки, зачёт соревнований, уведомления |
 | `src/lib/auth.ts`, `security.ts`, `rate-limiter.ts` | вход (email, Stepik OAuth), CSRF, лимиты |
@@ -73,7 +81,7 @@ Tailwind. Код участников выполняется в **Piston** (св
 2. **Скрытые тесты не покидают сервер.** API задачи их не отдаёт, в результатах
    по ним — только «прошёл/не прошёл», у ошибки — только её тип.
 3. **Версии Python совпадают**: Pyodide в браузере (`pyodide.ts`),
-   `PISTON_PYTHON_VERSION` (`piston.ts`) и скрипт `scripts/install-piston-python.mjs`.
+   `PISTON_PYTHON_VERSION` (`piston.ts`) и скрипт `scripts/install-piston-runtimes.mjs`.
    Меняешь одно — меняй всё. На сервере новую версию ставят **до** деплоя.
 4. **Структура базы меняется только миграциями.** Локально —
    `npm run db:migrate:dev -- --name ...`, миграция коммитится, деплой
@@ -91,6 +99,16 @@ Tailwind. Код участников выполняется в **Piston** (св
    и код участников не должен уходить третьей стороне.
 10. **Секреты — только в файлах на сервере**, не в git: `.env` сайта
     и `~/.config/codegolf/offsite.env` для бэкапов.
+11. **C# не смешивается с Python.** Попытки и рекорды C# — только в таблицах
+    `language_*`: очки, общий рейтинг, соревнования, задача недели и профили
+    считаются из `submissions` / `best_submissions`, и так C# туда не попадёт
+    ни через один запрос. Не переносите C# в питоновские таблицы без
+    осознанного решения владельца о правилах зачёта.
+12. **В C#-программе нет данных тестов.** Ответы сравнивает сервер, аргументы
+    идут через stdin, маркер результатов тоже. Решение может прочитать свой
+    исходник с диска — проверено. **Любая правка `csharp-runner.ts` или списка
+    запретов в `csharp.ts` — только с `npm run test:sandbox:csharp`** (он же
+    в `scripts/predeploy-check.sh`).
 
 ---
 
@@ -102,14 +120,17 @@ Tailwind. Код участников выполняется в **Piston** (св
 | `npm run lint` | линтер |
 | `npm run build` | сборка (без локальной базы шумит ошибками Prisma — это нормально, код выхода 0) |
 | `npm run test:sandbox` | изоляция раннера: 34 проверки, нужен локальный `python` |
+| `npm run test:sandbox:csharp` | изоляция C#-раннера: 88 проверок, нужен раннер с mono |
+| `npm run db:tasks:csharp` | проставить C#-сигнатуры из `prisma/csharp-signatures.json` (только пустые) |
 | `npm run check:rules` | правила очков, уведомлений и соревнований |
 | `npm run db:migrate:dev -- --name x` | новая миграция (нужна локальная база) |
 | `npm run db:migrate:status` / `:check` | состояние миграций / сверка базы со схемой |
 | `npm run ops:env:check` | опись настроек сервера, секреты замаскированы |
 | `npm run ops:backup` / `:backup:verify` | копия базы / проверка, что она разворачивается |
-| `npm run dev:up` / `dev:piston` | локальные база и раннер в Docker / Python в раннер |
+| `npm run dev:up` / `dev:piston` | локальные база и раннер в Docker / Python и mono (C#) в раннер |
 
 **Перед каждым коммитом:** `tsc`, `lint`, `test:sandbox`, `check:rules`,
+при правках C#-части — `test:sandbox:csharp`,
 а при изменениях зависимостей или конфигурации — ещё и `build`.
 
 ---
@@ -163,8 +184,15 @@ cd ~/codegolf-arena && bash scripts/backup-db.sh && bash scripts/deploy-standalo
   на stepik.org/oauth2/applications. Адрес возврата — ровно
   `https://codegolf.ru/api/auth/stepik/callback`. При скрытом вводе легко вставить
   секрет дважды (получится 256 символов): `npm run ops:env:check` это ловит.
-- **Свежий контейнер Piston приходит без Python** — после его пересоздания нужен
+- **Свежий контейнер Piston приходит без Python и mono** — после его пересоздания нужен
   `npm run dev:piston`. `/api/health` прямо пишет, если нужной версии нет.
+- **mono пишет ошибки компиляции в stdout, а не в stderr**, и его формат `"R"`
+  печатает `1.0/3` с 17 цифрами вместо самой короткой записи. Оба случая уже
+  обработаны в `piston.ts` и `csharp-runner.ts` и закрыты проверками
+  `test:sandbox:csharp` — не «упрощайте» это обратно.
+- **Страница, собранная статически, не видит смену `.env`.** Всё, что зависит от
+  `CSHARP_ENABLED` (правила, список задач), обновляется раз в минуту (`revalidate`);
+  страница задачи и API читают настройку на каждый запрос.
 - **`.env` читается службой только при старте** — после правки:
   `sudo systemctl restart codegolf`.
 - **Машина владельца — Windows с Git Bash:** Python вызывается как `python`,
