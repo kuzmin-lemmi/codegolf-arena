@@ -23,6 +23,8 @@ interface SubmitFormProps {
     inputData: { args: any[] };
     expectedOutput: string;
   }>;
+  // Локальная проверка идёт по открытым тестам; скрытые считаются только числом
+  hiddenTestsCount?: number;
   allowedImports?: string[];
   availableEnvs?: string[];    // EnvId[] — какие окружения доступны для задачи
   defaultEnvId?: string;       // EnvId по умолчанию
@@ -78,6 +80,7 @@ export function SubmitForm({
   nextTask,
   functionArgs = ['s'],
   testcases = [],
+  hiddenTestsCount = 0,
   allowedImports = [],
   availableEnvs,
   defaultEnvId,
@@ -540,6 +543,7 @@ export function SubmitForm({
         <>
           <LocalCheckResultCard 
             result={localResult} 
+            hiddenTestsCount={hiddenTestsCount}
             isLoggedIn={isLoggedIn}
             returnTo={returnTo}
           />
@@ -767,10 +771,12 @@ function SubmitResultCard({ result }: { result: SubmitResult }) {
 
 function LocalCheckResultCard({ 
   result, 
+  hiddenTestsCount = 0,
   isLoggedIn,
   returnTo,
 }: { 
   result: LocalCheckResult; 
+  hiddenTestsCount?: number;
   isLoggedIn: boolean;
   returnTo: string;
 }) {
@@ -797,7 +803,9 @@ function LocalCheckResultCard({
         <div className="flex-1">
           <div className="font-bold text-xl tracking-wide">
             {isPassed ? (
-              <span className="text-accent-green">Все тесты пройдены!</span>
+              <span className="text-accent-green">
+                {hiddenTestsCount > 0 ? 'Открытые тесты пройдены!' : 'Все тесты пройдены!'}
+              </span>
             ) : (
               <span className="text-accent-red">
                 Пройдено {result.testsPassed} из {result.testsTotal}
@@ -805,6 +813,13 @@ function LocalCheckResultCard({
             )}
           </div>
           
+          {isPassed && hiddenTestsCount > 0 && (
+            <div className="text-sm text-text-secondary mt-1">
+              При отправке в рейтинг сервер прогонит ещё {hiddenTestsCount}{' '}
+              {pluralizeRu(hiddenTestsCount, ['скрытый тест', 'скрытых теста', 'скрытых тестов'])}.
+            </div>
+          )}
+
           <div className="text-sm text-text-secondary mt-1">
             Длина: <span className={cn(
               'font-mono font-bold text-base',

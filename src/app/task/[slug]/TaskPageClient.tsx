@@ -28,6 +28,8 @@ interface TaskPageClientProps {
     inputData: { args: any[] };
     expectedOutput: string;
   }>;
+  // Сколько тестов задачи скрыто: сами данные на клиент не приходят
+  hiddenTestsCount?: number;
   allowedImports: string[];
   availableEnvs?: string[];
   defaultEnvId?: string;
@@ -42,6 +44,7 @@ export function TaskPageClient({
   nextTask,
   functionArgs,
   testcases,
+  hiddenTestsCount = 0,
   allowedImports,
   availableEnvs,
   defaultEnvId,
@@ -203,6 +206,7 @@ export function TaskPageClient({
           isLoggedIn={isLoggedIn}
           functionArgs={functionArgs}
           testcases={testcases}
+          hiddenTestsCount={hiddenTestsCount}
           allowedImports={allowedImports}
           availableEnvs={availableEnvs}
           defaultEnvId={defaultEnvId}
@@ -221,11 +225,11 @@ export function TaskPageClient({
         />
       </Card>
 
-      {testcases.length > 0 && (
+      {(testcases.length > 0 || hiddenTestsCount > 0) && (
         <Card padding="lg">
           <div className="flex items-center justify-between mb-4 gap-3">
-            <h3 className="text-base sm:text-lg font-semibold">Все тесты</h3>
-            <span className="text-xs text-text-muted">одинаковы для локальной и серверной проверки</span>
+            <h3 className="text-base sm:text-lg font-semibold">Открытые тесты</h3>
+            <span className="text-xs text-text-muted">на них работает локальная проверка</span>
           </div>
           <div className="space-y-3">
             {testcases.map((testcase, index) => {
@@ -248,9 +252,16 @@ export function TaskPageClient({
               );
             })}
           </div>
+          {hiddenTestsCount > 0 && (
+            <div className="mt-3 p-3 rounded-lg border border-dashed border-border bg-background-tertiary/30 text-sm text-text-secondary">
+              И ещё {hiddenTestsCount}{' '}
+              {pluralizeRu(hiddenTestsCount, ['скрытый тест', 'скрытых теста', 'скрытых тестов'])}.
+              Их данные не показываются: иначе ответ можно было бы выписать со страницы.
+            </div>
+          )}
           <div className="mt-3 rounded-md border border-border px-3 py-2 text-xs text-text-secondary bg-background-tertiary/40">
-            Локальная проверка и отправка в рейтинг используют один и тот же набор тестов.
-            Если есть расхождение, причина обычно в лимитах времени или окружении раннера.
+            Локальная проверка в браузере прогоняет только открытые тесты. В рейтинг решение
+            попадает после серверной проверки на полном наборе — открытых и скрытых.
           </div>
         </Card>
       )}

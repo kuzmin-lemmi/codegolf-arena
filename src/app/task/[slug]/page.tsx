@@ -57,12 +57,19 @@ export default async function TaskPage({ params }: TaskPageProps) {
     where: { slug },
     include: {
       testcases: {
+        // Правило 2: скрытые тесты не покидают сервер. Страница рендерится
+        // на сервере, но данные пропсов уезжают в браузер вместе с разметкой —
+        // без этого фильтра ожидаемые ответы можно выписать со страницы
+        where: { isHidden: false },
         orderBy: { orderIndex: 'asc' },
         select: {
           inputData: true,
           expectedOutput: true,
           orderIndex: true,
         },
+      },
+      _count: {
+        select: { testcases: true },
       },
     },
   });
@@ -111,10 +118,13 @@ export default async function TaskPage({ params }: TaskPageProps) {
     createdAt: task.createdAt,
   };
 
-  const allTestcases = task.testcases.map((tc) => ({
+  const visibleTestcases = task.testcases.map((tc) => ({
     inputData: JSON.parse(tc.inputData),
     expectedOutput: tc.expectedOutput,
   }));
+
+  // Про скрытые тесты наружу уходит только их количество
+  const hiddenTestsCount = Math.max(0, task._count.testcases - task.testcases.length);
 
   // Свой рекорд и своё место: из-за этого страница рендерится на каждый запрос,
   // зато лидерборд и цель по длине всегда актуальные
@@ -214,7 +224,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 taskTitle={taskData.title}
                 nextTask={nextTask}
                 functionArgs={taskData.functionArgs}
-                testcases={allTestcases}
+                testcases={visibleTestcases}
+                hiddenTestsCount={hiddenTestsCount}
                 allowedImports={taskData.constraintsJson.allowed_imports || []}
                 availableEnvs={taskData.constraintsJson.envs || ['base']}
                 defaultEnvId={taskData.constraintsJson.default_env || 'base'}
