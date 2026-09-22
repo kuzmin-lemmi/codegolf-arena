@@ -97,6 +97,7 @@ export function TaskPageClient({
         isLoggedIn={isLoggedIn}
         switcher={switcher}
         testcases={testcases}
+        hiddenTestsCount={hiddenTestsCount}
       />
     );
   }

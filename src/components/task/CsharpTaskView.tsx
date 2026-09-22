@@ -63,9 +63,18 @@ interface CsharpTaskViewProps {
   isLoggedIn: boolean;
   switcher: ReactNode;
   testcases: Array<{ inputData: { args: any[] }; expectedOutput: string }>;
+  // Сами скрытые тесты в браузер не приходят — только их количество
+  hiddenTestsCount?: number;
 }
 
-export function CsharpTaskView({ taskSlug, signature, isLoggedIn, switcher, testcases }: CsharpTaskViewProps) {
+export function CsharpTaskView({
+  taskSlug,
+  signature,
+  isLoggedIn,
+  switcher,
+  testcases,
+  hiddenTestsCount = 0,
+}: CsharpTaskViewProps) {
   const pathname = usePathname();
   const returnTo = encodeURIComponent(pathname);
   const draftKey = `task_draft_csharp:${taskSlug}`;
@@ -366,7 +375,7 @@ export function CsharpTaskView({ taskSlug, signature, isLoggedIn, switcher, test
         </div>
       </Card>
 
-      {testcases.length > 0 && (
+      {(testcases.length > 0 || hiddenTestsCount > 0) && (
         <Card padding="lg">
           <div className="flex items-center justify-between mb-4 gap-3">
             <h3 className="text-base sm:text-lg font-semibold">Открытые тесты</h3>
@@ -394,6 +403,13 @@ export function CsharpTaskView({ taskSlug, signature, isLoggedIn, switcher, test
               </div>
             ))}
           </div>
+          {hiddenTestsCount > 0 && (
+            <div className="mt-3 p-3 rounded-lg border border-dashed border-border bg-background-tertiary/30 text-sm text-text-secondary">
+              И ещё {hiddenTestsCount}{' '}
+              {pluralizeRu(hiddenTestsCount, ['скрытый тест', 'скрытых теста', 'скрытых тестов'])}: их
+              сервер прогонит при отправке в рейтинг.
+            </div>
+          )}
           <div className="mt-3 rounded-md border border-border px-3 py-2 text-xs text-text-secondary bg-background-tertiary/40">
             Ответ сравнивается в том виде, в каком его печатает Python: массив — как{' '}
             <span className="font-mono">[1, 2]</span>, строки в массиве — в кавычках{' '}
