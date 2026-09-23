@@ -19,8 +19,9 @@ npm run lint
 echo "[2/8] Runner isolation (честность проверки решений)"
 npm run test:sandbox
 
-echo "[3/8] C# runner isolation (проба C#, нужен mono в раннере)"
+echo "[3/8] C# and JavaScript runner isolation (нужны mono и Node.js в раннере)"
 npm run test:sandbox:csharp
+npm run test:sandbox:js
 
 echo "[4/8] Prisma client"
 npm run db:generate

@@ -9,7 +9,8 @@ import type { TaskTier } from '@/types';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Соревнования — Арена однострочников',
+  // Название сайта к заголовку добавляет шаблон в layout.tsx
+  title: 'Соревнования',
   description: 'Соревнования по Python однострочникам. Реши задачи быстрее всех!',
   alternates: {
     canonical: '/competitions',

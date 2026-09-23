@@ -8,6 +8,8 @@ import { ShareProfile } from '@/components/profile/ShareProfile';
 import { getPublicProfile } from '@/lib/profile';
 import { cn, formatDate, pluralizeRu } from '@/lib/utils';
 import type { Metadata } from 'next';
+import { LanguagePoints } from '@/components/profile/LanguagePoints';
+import { LANGUAGE_LABELS } from '@/lib/languages';
 
 interface PublicProfilePageProps {
   params: Promise<{ nickname: string }>;
@@ -59,7 +61,8 @@ export async function generateMetadata({ params }: PublicProfilePageProps): Prom
   const description = `${profile.name} на Арене однострочников: ${buildSummary(profile)}.`;
 
   return {
-    title: `${profile.name} — Арена однострочников`,
+    // Название сайта к заголовку добавляет шаблон в layout.tsx
+    title: profile.name,
     description,
     alternates: {
       canonical: `/u/${profile.slug}`,
@@ -151,6 +154,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
                 accent="text-accent-amber"
               />
             </div>
+            <LanguagePoints stats={profile.languageStats} />
 
             <Card padding="lg">
               <div className="flex items-center justify-between mb-4 gap-3">
@@ -179,8 +183,12 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
 
                     return (
                       <Link
-                        key={solution.slug}
-                        href={`/task/${solution.slug}`}
+                        key={`${solution.slug}:${solution.language}`}
+                        href={
+                          solution.language === 'python'
+                            ? `/task/${solution.slug}`
+                            : `/task/${solution.slug}?lang=${solution.language}`
+                        }
                         className="flex items-center gap-3 p-3 rounded-lg bg-background-tertiary/60 hover:bg-background-tertiary transition-colors"
                       >
                         <span
@@ -198,6 +206,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-medium truncate">{solution.title}</span>
                             <TierBadge tier={solution.tier} />
+                            <span className="text-xs text-accent-blue">{LANGUAGE_LABELS[solution.language]}</span>
                           </div>
                           <div className="text-xs text-text-muted">
                             {formatDate(solution.achievedAt)}

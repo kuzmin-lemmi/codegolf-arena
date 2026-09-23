@@ -24,20 +24,18 @@ model User {
   nicknameKey       String?   @unique @map("nickname_key")
   nicknameChangedAt DateTime? @map("nickname_changed_at")
   avatarUrl         String?   @map("avatar_url")
+  // Общий рейтинг: сумма очков по всем языкам = SUM(best_submissions.points)
   totalPoints       Int       @default(0) @map("total_points")
   isAdmin           Boolean   @default(false) @map("is_admin")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  submissions             Submission[]
-  bestSubmissions         BestSubmission[]
-  sessions                Session[]
-  // Попытки и рекорды на других языках (проба C#) — вне очков и рейтинга
-  languageSubmissions     LanguageSubmission[]
-  languageBestSubmissions LanguageBestSubmission[]
-  competitionEntries      CompetitionEntry[]
-  submissionJobs          SubmissionJob[]
-  notifications           Notification[]
+  submissions        Submission[]
+  bestSubmissions    BestSubmission[]
+  sessions           Session[]
+  competitionEntries CompetitionEntry[]
+  submissionJobs     SubmissionJob[]
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -70,21 +68,20 @@ model Task {
   exampleInput      String   @map("example_input")
   exampleOutput     String   @map("example_output")
   constraintsJson   String   @map("constraints_json") // JSON
-  // Проба C#: типы аргументов и ответа, JSON {"args":[["nums","int[]"]],"returns":"int"}.
-  // null — задача на C# не открыта. Подробно — docs/csharp-trial.md
+  // Типы аргументов и ответа, JSON {"args":[["nums","int[]"]],"returns":"int"}.
+  // По ним работают JavaScript и C#: null — задача открыта только для Python.
+  // Подробно — docs/csharp-trial.md, раздел 2.5
   csharpSignature   String?  @map("csharp_signature")
   status            String   @default("draft") // draft, published, archived
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  testcases               Testcase[]
-  submissions             Submission[]
-  bestSubmissions         BestSubmission[]
-  weeklyChallenges        WeeklyChallenge[]
-  languageSubmissions     LanguageSubmission[]
-  languageBestSubmissions LanguageBestSubmission[]
-  competitionTasks        CompetitionTask[]
-  notifications           Notification[]
+  testcases        Testcase[]
+  submissions      Submission[]
+  bestSubmissions  BestSubmission[]
+  weeklyChallenges WeeklyChallenge[]
+  competitionTasks CompetitionTask[]
+  notifications    Notification[]
 
   @@map("tasks")
 }
@@ -108,6 +105,8 @@ model Submission {
   id          String   @id @default(uuid())
   taskId      String   @map("task_id")
   userId      String   @map("user_id")
+  // python, javascript, csharp — src/lib/languages.ts
+  language    String   @default("python")
   code        String
   codeLength  Int      @map("code_length")
   status      String   @default("pending") // pending, pass, fail, error
@@ -121,17 +120,19 @@ model Submission {
   user           User            @relation(fields: [userId], references: [id])
   bestSubmission BestSubmission?
 
-  @@index([taskId])
+  @@index([taskId, language])
   @@index([userId])
-  @@index([taskId, userId])
+  @@index([taskId, userId, language])
   @@map("submissions")
 }
 
-// Лучший результат пользователя по задаче
+// Лучший результат пользователя по задаче на одном языке.
+// На каждом языке своя таблица рекордов: места считаются внутри (задача, язык)
 model BestSubmission {
   id                String   @id @default(uuid())
   taskId            String   @map("task_id")
   userId            String   @map("user_id")
+  language          String   @default("python")
   submissionId      String   @unique @map("submission_id")
   codeLength        Int      @map("code_length")
   achievedAt        DateTime @default(now()) @map("achieved_at")
@@ -140,61 +141,18 @@ model BestSubmission {
   improveCount      Int      @default(0) @map("improve_count")
   improvePoints     Int      @default(0) @map("improve_points")
   firstPlaceAwarded Boolean  @default(false) @map("first_place_awarded")
+  // Все очки, полученные за эту задачу на этом языке: за решение, улучшения
+  // и первое место. Рейтинг по языку — их сумма, общий — users.total_points
+  points            Int      @default(0)
 
   task       Task       @relation(fields: [taskId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
   submission Submission @relation(fields: [submissionId], references: [id])
 
-  @@unique([taskId, userId])
-  @@index([userId])
-  @@index([taskId, codeLength, achievedAt])
-  @@map("best_submissions")
-}
-
-// Попытка решения на другом языке (проба C#).
-// Намеренно отдельно от submissions: очки, общий рейтинг, соревнования и
-// задача недели считаются по Python из submissions/best_submissions, и в
-// отдельной таблице C# туда не попадёт ни через один из этих запросов
-model LanguageSubmission {
-  id          String   @id @default(uuid())
-  language    String // csharp
-  taskId      String   @map("task_id")
-  userId      String   @map("user_id")
-  code        String
-  codeLength  Int      @map("code_length")
-  status      String // pass, fail, error
-  testsPassed Int      @default(0) @map("tests_passed")
-  testsTotal  Int      @default(0) @map("tests_total")
-  runtimeMs   Int?     @map("runtime_ms")
-  errorMsg    String?  @map("error_msg")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  task           Task                    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bestSubmission LanguageBestSubmission?
-
-  @@index([taskId, language])
-  @@index([userId, taskId, language])
-  @@map("language_submissions")
-}
-
-// Лучший результат пользователя по задаче на другом языке (проба C#)
-model LanguageBestSubmission {
-  id           String   @id @default(uuid())
-  language     String
-  taskId       String   @map("task_id")
-  userId       String   @map("user_id")
-  submissionId String   @unique @map("submission_id")
-  codeLength   Int      @map("code_length")
-  achievedAt   DateTime @default(now()) @map("achieved_at")
-
-  task       Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  submission LanguageSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-
   @@unique([taskId, userId, language])
+  @@index([userId, language])
   @@index([taskId, language, codeLength, achievedAt])
-  @@map("language_best_submissions")
+  @@map("best_submissions")
 }
 
 // Задача недели

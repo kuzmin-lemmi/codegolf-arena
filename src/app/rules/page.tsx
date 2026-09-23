@@ -7,21 +7,24 @@ import {
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import { CSHARP_USINGS } from '@/lib/csharp';
-import { isCsharpEnabled } from '@/lib/csharp-runner';
+import { isLanguageEnabled } from '@/lib/language-settings';
 
 export const metadata: Metadata = {
-  title: 'Правила — Арена однострочников',
+  // Название сайта к заголовку добавляет шаблон в layout.tsx
+  title: 'Правила',
   description: 'Правила игры и правила сообщества на Арене однострочников',
   alternates: {
     canonical: '/rules',
   },
 };
 
-// Раздел про C# зависит от CSHARP_ENABLED: без обновления страница застыла бы
-// в том виде, в каком её собрали, и не заметила бы включения C# на сервере
+// Разделы про JavaScript и C# зависят от JAVASCRIPT_ENABLED / CSHARP_ENABLED: без
+// обновления страница застыла бы в том виде, в каком её собрали
 export const revalidate = 60;
 
 export default function RulesPage() {
+  const javascriptEnabled = isLanguageEnabled('javascript');
+  const csharpEnabled = isLanguageEnabled('csharp');
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -50,12 +53,12 @@ export default function RulesPage() {
                 <RuleItem
                   icon={Code2}
                   title="Пиши код в одну строку"
-                  description="Твоя задача — написать выражение на Python, которое решает задачу. Выражение должно быть в одну строку."
+                  description="Твоя задача — написать выражение на Python, JavaScript или C#, которое решает задачу. Выражение должно быть в одну строку."
                 />
                 <RuleItem
                   icon={Trophy}
                   title="Соревнуйся за длину"
-                  description="Чем короче код — тем лучше. Рейтинг по задаче определяется длиной кода в символах."
+                  description="Чем короче код — тем лучше. Рейтинг по задаче определяется длиной кода в символах. У каждого языка своя таблица рекордов: длину решений на разных языках не сравниваем."
                 />
                 <RuleItem
                   icon={CheckCircle}
@@ -95,51 +98,74 @@ export default function RulesPage() {
             </Card>
           </section>
 
-          {/* Проба C# */}
-          {isCsharpEnabled() && (
+          {/* JavaScript и C# */}
+          {(javascriptEnabled || csharpEnabled) && (
             <section>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                 <Code2 className="w-6 h-6 text-accent-blue" />
-                Проба: решения на C#
+                JavaScript и C#
               </h2>
               <Card padding="lg">
                 <p className="text-text-secondary mb-4">
-                  Задачи с меткой <strong>«+ C#»</strong> можно решать и на C#. Правила те же: одно
-                  выражение, короче — выше. Язык переключается над редактором.
+                  Задачи с метками <strong>JavaScript</strong> и <strong>C#</strong> можно решать и на этих
+                  языках. Правила те же: одно выражение, короче — выше. Язык переключается над редактором.
                 </p>
 
-                <div className="bg-background-tertiary rounded-lg p-4 mb-4">
-                  <div className="text-sm text-text-muted mb-2">Пример задачи:</div>
-                  <code className="text-accent-blue">static int Solution(int[] nums)</code>
-                  <div className="text-sm text-text-muted mt-2">Твой код:</div>
-                  <code className="text-accent-green">nums.Sum()</code>
-                  <div className="text-sm text-text-muted mt-2">Что выполняется на сервере:</div>
-                  <pre className="text-sm font-mono text-text-secondary">
+                {javascriptEnabled && (
+                  <div className="bg-background-tertiary rounded-lg p-4 mb-4">
+                    <div className="text-sm text-text-muted mb-2">JavaScript. Твой код:</div>
+                    <code className="text-accent-green">nums.reduce((a,b)=&gt;a+b,0)</code>
+                    <div className="text-sm text-text-muted mt-2">Что выполняется на сервере:</div>
+                    <pre className="text-sm font-mono text-text-secondary">
+{`const solution = (nums) => (nums.reduce((a,b)=>a+b,0))`}
+                    </pre>
+                  </div>
+                )}
+
+                {csharpEnabled && (
+                  <div className="bg-background-tertiary rounded-lg p-4 mb-4">
+                    <div className="text-sm text-text-muted mb-2">C#. Твой код:</div>
+                    <code className="text-accent-green">nums.Sum()</code>
+                    <div className="text-sm text-text-muted mt-2">Что выполняется на сервере:</div>
+                    <pre className="text-sm font-mono text-text-secondary">
 {`static int Solution(int[] nums) => nums.Sum();`}
-                  </pre>
-                </div>
+                    </pre>
+                  </div>
+                )}
 
                 <ul className="space-y-2 text-sm text-text-secondary">
                   <li>
-                    • У C# <strong>своя таблица рекордов</strong>: сравнивать длину с Python нечестно,
-                    языки разные.
+                    • У каждого языка <strong>своя таблица рекордов</strong>: сравнивать длину решений на
+                    разных языках нечестно.
                   </li>
                   <li>
-                    • Пока это проба: <strong>очков за C# нет</strong>, в общий рейтинг, соревнования
-                    и задачу недели он не идёт.
+                    • <strong>Очки начисляются на каждом языке отдельно</strong>: решил задачу на Python —
+                    получил очки, решил её же на JavaScript — получил ещё. Рейтингов четыре: общий и по
+                    каждому языку.
+                  </li>
+                  {javascriptEnabled && (
+                    <li>
+                      • JavaScript — Node.js 20. Можно присваивать новой переменной прямо в выражении:{' '}
+                      <code>(s=0,a.map(x=&gt;s+=x),s)</code>. Рекурсия — через <code>solution(...)</code>.
+                      Запрещено: <code>;</code>, <code>require</code>, <code>import</code>,{' '}
+                      <code>process</code>, <code>eval</code>, <code>Function</code>, <code>globalThis</code>.
+                    </li>
+                  )}
+                  {csharpEnabled && (
+                    <li>
+                      • C# — C# 9 (mono 6.12): LINQ, лямбды, <code>switch</code>-выражения,{' '}
+                      <code>a[^1]</code>. Подключено: <code>{CSHARP_USINGS.join(', ')}</code>. Рекурсия —
+                      через <code>Solution(...)</code>. Запрещено: <code>;</code>, комментарии,{' '}
+                      <code>System.</code>, <code>Console</code>, <code>Environment</code>, рефлексия (
+                      <code>typeof</code>, <code>GetType</code>…), <code>Main</code>.
+                    </li>
+                  )}
+                  <li>
+                    • Решения на JavaScript и C# проверяются на сервере. C# сначала компилируется —
+                    это занимает пару секунд.
                   </li>
                   <li>
-                    • Язык — C# 9 (mono 6.12): LINQ, лямбды, <code>switch</code>-выражения,{' '}
-                    <code>a[^1]</code>. Подключено: <code>{CSHARP_USINGS.join(', ')}</code>.
-                    Рекурсия — через <code>Solution(...)</code>.
-                  </li>
-                  <li>
-                    • Запрещено: <code>;</code>, комментарии, <code>System.</code>, <code>Console</code>,{' '}
-                    <code>Environment</code>, рефлексия (<code>typeof</code>, <code>GetType</code>…),{' '}
-                    <code>Main</code>.
-                  </li>
-                  <li>
-                    • Проверка идёт на сервере и занимает несколько секунд: C# сначала компилируется.
+                    • Соревнования пока проходят только на Python.
                   </li>
                 </ul>
               </Card>
@@ -252,6 +278,11 @@ export default function RulesPage() {
 
               <div className="mt-6 space-y-2 text-sm text-text-secondary">
                 <p>
+                  Очки начисляются <span className="text-text-primary">на каждом языке отдельно</span>{' '}
+                  по одним и тем же правилам. Общий рейтинг — сумма очков по всем языкам, а у каждого
+                  языка есть и свой рейтинг.
+                </p>
+                <p>
                   Улучшение считается от твоего же прошлого рекорда по задаче: отправил решение
                   короче — сразу получил очки.
                 </p>
@@ -261,8 +292,8 @@ export default function RulesPage() {
                   <span className="text-text-primary">20 очков в Bronze, 40 в Silver, 60 в Gold</span>.
                 </p>
                 <p>
-                  Бонус за первое место начисляется один раз на задачу — даже если рекорд у тебя
-                  потом отберут и ты вернёшь его обратно.
+                  Бонус за первое место начисляется один раз на задачу и язык — даже если рекорд у
+                  тебя потом отберут и ты вернёшь его обратно.
                 </p>
               </div>
             </Card>

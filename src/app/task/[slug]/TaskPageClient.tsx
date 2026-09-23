@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui';
 import { SubmitForm } from '@/components/task/SubmitForm';
 import { TaskTabs } from '@/components/task/TaskTabs';
-import { CsharpTaskView } from '@/components/task/CsharpTaskView';
-import { LanguageSwitch, type SolutionLanguage } from '@/components/task/LanguageSwitch';
+import { TypedTaskView } from '@/components/task/TypedTaskView';
+import { LanguageSwitch } from '@/components/task/LanguageSwitch';
 import type { CsharpSignature } from '@/lib/csharp';
+import { isLanguage, type Language } from '@/lib/languages';
 import { useAuth } from '@/context/AuthContext';
 import { toPythonLiteral } from '@/lib/python-serializer';
 import { pluralizeRu } from '@/lib/utils';
@@ -39,8 +40,10 @@ interface TaskPageClientProps {
   leaderboard: LeaderboardEntry[];
   currentUserRank?: number;
   userBest?: TaskUserBest | null;
-  // Проба C#: сигнатура, если задача открыта для C# и C# включён
-  csharp?: CsharpSignature | null;
+  // На каких языках можно решать задачу: Python всегда, JavaScript и C# —
+  // если включены и у задачи есть сигнатура с типами (typedSignature)
+  languages: Language[];
+  typedSignature?: CsharpSignature | null;
 }
 
 export function TaskPageClient({
@@ -56,17 +59,18 @@ export function TaskPageClient({
   leaderboard,
   currentUserRank,
   userBest,
-  csharp = null,
+  languages,
+  typedSignature = null,
 }: TaskPageClientProps) {
   const { isLoggedIn } = useAuth();
   const router = useRouter();
   const [solutionsRefreshKey, setSolutionsRefreshKey] = useState(0);
   const [editorLength, setEditorLength] = useState<number | null>(null);
-  const [language, setLanguage] = useState<SolutionLanguage>('python');
+  const [language, setLanguage] = useState<Language>('python');
+  const languagesKey = languages.join(',');
 
-  // Язык запоминается в браузере; ?lang=csharp в ссылке открывает сразу C#
+  // Язык запоминается в браузере; ?lang=javascript в ссылке открывает сразу JavaScript
   useEffect(() => {
-    if (!csharp) return;
     let preferred: string | null = new URLSearchParams(window.location.search).get('lang');
     if (!preferred) {
       try {
@@ -75,10 +79,10 @@ export function TaskPageClient({
         preferred = null;
       }
     }
-    if (preferred === 'csharp') setLanguage('csharp');
-  }, [csharp]);
+    if (isLanguage(preferred) && languagesKey.split(',').includes(preferred)) setLanguage(preferred);
+  }, [languagesKey]);
 
-  const chooseLanguage = (next: SolutionLanguage) => {
+  const chooseLanguage = (next: Language) => {
     setLanguage(next);
     try {
       window.localStorage.setItem('solution_language', next);
@@ -87,13 +91,18 @@ export function TaskPageClient({
     }
   };
 
-  const switcher = csharp ? <LanguageSwitch value={language} onChange={chooseLanguage} /> : null;
+  const switcher =
+    languages.length > 1 ? (
+      <LanguageSwitch languages={languages} value={language} onChange={chooseLanguage} />
+    ) : null;
 
-  if (csharp && language === 'csharp') {
+  if (typedSignature && language !== 'python' && languages.includes(language)) {
     return (
-      <CsharpTaskView
+      <TypedTaskView
+        key={language}
+        language={language}
         taskSlug={taskSlug}
-        signature={csharp}
+        signature={typedSignature}
         isLoggedIn={isLoggedIn}
         switcher={switcher}
         testcases={testcases}
@@ -321,6 +330,7 @@ export function TaskPageClient({
           refreshKey={solutionsRefreshKey}
           currentUserRank={currentUserRank}
           isLoggedIn={isLoggedIn}
+          language="python"
         />
       </Card>
     </div>

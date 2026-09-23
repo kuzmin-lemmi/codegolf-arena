@@ -34,12 +34,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Получаем топ-10 по этой задаче
+    // Топ-10 по этой задаче. Задача недели пока на Python
     const leaderboard = await prisma.bestSubmission.findMany({
-      where: { taskId: weeklyChallenge.taskId },
+      where: { taskId: weeklyChallenge.taskId, language: 'python' },
       orderBy: [
         { codeLength: 'asc' },
         { achievedAt: 'asc' },
+        { userId: 'asc' },
       ],
       take: 10,
       include: {

@@ -1,3 +1,5 @@
+import type { Language } from '@/lib/languages';
+
 export interface SubmissionResponseData {
   submissionId: string | null;
   status: 'pass' | 'fail' | 'error';
@@ -32,6 +34,7 @@ export interface TaskSubmitPayload {
   taskSlug: string;
   code: string;
   envId?: string; // EnvId окружения, выбранного пользователем
-  // Нет поля — Python. C# (проба) проверяется в csharp-submission.ts, вне зачёта
-  language?: 'python' | 'csharp';
+  // Нет поля — Python (так записаны задания до 23 сентября 2026).
+  // JavaScript и C# проверяются в language-submission.ts
+  language?: Language;
 }

@@ -3,7 +3,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { PISTON_API_URL, PISTON_PYTHON_VERSION } from '@/lib/piston';
-import { CSHARP_PISTON_LANGUAGE, CSHARP_PISTON_VERSION, isCsharpEnabled } from '@/lib/csharp-runner';
+import { CSHARP_PISTON_LANGUAGE, CSHARP_PISTON_VERSION } from '@/lib/csharp-runner';
+import { JS_PISTON_LANGUAGE, JS_PISTON_VERSION } from '@/lib/js-runner';
+import { isLanguageEnabled } from '@/lib/language-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,19 +34,28 @@ async function checkPiston() {
     throw new Error(`Python ${PISTON_PYTHON_VERSION} is not installed in Piston`);
   }
 
-  // Проба C#: пока C# выключен, его отсутствие в раннере — не поломка
+  // Пока язык выключен, его отсутствие в раннере — не поломка
   const csharpRuntime = runtimes.find(
     (runtime) => runtime.language === CSHARP_PISTON_LANGUAGE && runtime.version === CSHARP_PISTON_VERSION
   );
-  if (isCsharpEnabled() && !csharpRuntime) {
+  if (isLanguageEnabled('csharp') && !csharpRuntime) {
     throw new Error(`C# ${CSHARP_PISTON_VERSION} is not installed in Piston`);
+  }
+
+  const jsRuntime = runtimes.find(
+    (runtime) => runtime.language === JS_PISTON_LANGUAGE && runtime.version === JS_PISTON_VERSION
+  );
+  if (isLanguageEnabled('javascript') && !jsRuntime) {
+    throw new Error(`JavaScript (Node.js ${JS_PISTON_VERSION}) is not installed in Piston`);
   }
 
   return {
     ok: true,
     pythonVersion: pythonRuntime.version || null,
     csharpVersion: csharpRuntime?.version || null,
-    csharpEnabled: isCsharpEnabled(),
+    csharpEnabled: isLanguageEnabled('csharp'),
+    javascriptVersion: jsRuntime?.version || null,
+    javascriptEnabled: isLanguageEnabled('javascript'),
     runtimesCount: runtimes.length,
   };
 }
@@ -71,7 +82,7 @@ export async function GET() {
             ? pistonState.value
             : {
                 ok: false,
-                // «Нет нужной версии Python / C#» показываем как есть: это безопасно
+                // «Нет нужной версии Python / JavaScript / C#» показываем как есть: это безопасно
                 // и сразу подсказывает, что делать (npm run dev:piston)
                 error:
                   pistonState.reason instanceof Error &&

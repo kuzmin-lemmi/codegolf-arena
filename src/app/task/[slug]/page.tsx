@@ -8,8 +8,8 @@ import { TaskStatement } from '@/components/task/TaskStatement';
 import { TaskPageClient } from './TaskPageClient';
 import { prisma } from '@/lib/db';
 import { getCurrentUserFromCookies } from '@/lib/auth';
-import { parseCsharpSignature } from '@/lib/csharp';
-import { isCsharpEnabled } from '@/lib/csharp-runner';
+import { getTaskLanguages, getTypedSignature } from '@/lib/language-settings';
+import { getTaskBoard } from '@/lib/task-board';
 import type { Metadata } from 'next';
 import type { Task, TaskConstraints, TaskMode, TaskStatus, TaskTier } from '@/types';
 
@@ -29,10 +29,11 @@ export async function generateMetadata({ params }: TaskPageProps): Promise<Metad
     return { title: 'Задача не найдена' };
   }
 
-  const description = `Реши задачу "${task.title}" в одну строку на Python. ${task.statementMd.slice(0, 120)}`;
+  const description = `Реши задачу "${task.title}" в одну строку на Python, JavaScript или C#. ${task.statementMd.slice(0, 120)}`;
 
   return {
-    title: `${task.title} — Арена однострочников`,
+    // Название сайта к заголовку добавляет шаблон в layout.tsx
+    title: task.title,
     description,
     alternates: {
       canonical: `/task/${slug}`,
@@ -80,30 +81,6 @@ export default async function TaskPage({ params }: TaskPageProps) {
     notFound();
   }
 
-  const leaderboardEntries = await prisma.bestSubmission.findMany({
-    where: { taskId: task.id },
-    orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }],
-    take: 50,
-    include: {
-      user: {
-        select: {
-          nickname: true,
-          displayName: true,
-          avatarUrl: true,
-        },
-      },
-    },
-  });
-
-  const leaderboard = leaderboardEntries.map((entry, index) => ({
-    rank: index + 1,
-    nickname: entry.user.nickname || entry.user.displayName,
-    profileSlug: entry.user.nickname || entry.userId,
-    avatarUrl: entry.user.avatarUrl,
-    codeLength: entry.codeLength,
-    achievedAt: entry.achievedAt,
-  }));
-
   const taskData: Task = {
     id: task.id,
     slug: task.slug,
@@ -128,54 +105,32 @@ export default async function TaskPage({ params }: TaskPageProps) {
   // Про скрытые тесты наружу уходит только их количество
   const hiddenTestsCount = Math.max(0, task._count.testcases - task.testcases.length);
 
-  // Проба C#: переключатель языка — только у задач с C#-сигнатурой и при включённом C#
-  const csharpSignature = isCsharpEnabled() ? parseCsharpSignature(task.csharpSignature) : null;
+  // Языки задачи: Python всегда, JavaScript и C# — если включены и у задачи есть типы
+  const languages = getTaskLanguages(task);
+  const typedSignature = languages.length > 1 ? getTypedSignature(task) : null;
 
   // Свой рекорд и своё место: из-за этого страница рендерится на каждый запрос,
-  // зато лидерборд и цель по длине всегда актуальные
+  // зато лидерборд и цель по длине всегда актуальные. Таблицы JavaScript и C#
+  // страница догружает сама, когда игрок переключает язык
   const currentUser = await getCurrentUserFromCookies();
+  const pythonBoard = await getTaskBoard({ taskId: task.id, language: 'python', userId: currentUser?.id });
 
-  let currentUserRank: number | undefined;
-  let userBest: { codeLength: number; firstLength: number | null; improveCount: number } | null =
-    null;
-
-  if (currentUser) {
-    const ownBest = await prisma.bestSubmission.findUnique({
-      where: {
-        taskId_userId: {
-          taskId: task.id,
-          userId: currentUser.id,
-        },
-      },
-      select: {
-        codeLength: true,
-        firstLength: true,
-        improveCount: true,
-        achievedAt: true,
-      },
-    });
-
-    if (ownBest) {
-      userBest = {
-        codeLength: ownBest.codeLength,
-        firstLength: ownBest.firstLength,
-        improveCount: ownBest.improveCount,
-      };
-
-      // Место по той же сортировке, что и лидерборд: длина, затем время рекорда
-      const betterCount = await prisma.bestSubmission.count({
-        where: {
-          taskId: task.id,
-          OR: [
-            { codeLength: { lt: ownBest.codeLength } },
-            { codeLength: ownBest.codeLength, achievedAt: { lt: ownBest.achievedAt } },
-          ],
-        },
-      });
-
-      currentUserRank = betterCount + 1;
-    }
-  }
+  const leaderboard = pythonBoard.entries.map((entry) => ({
+    rank: entry.rank,
+    nickname: entry.nickname,
+    profileSlug: entry.profileSlug,
+    avatarUrl: entry.avatarUrl,
+    codeLength: entry.codeLength,
+    achievedAt: entry.achievedAt,
+  }));
+  const currentUserRank = pythonBoard.own?.rank;
+  const userBest = pythonBoard.own
+    ? {
+        codeLength: pythonBoard.own.codeLength,
+        firstLength: pythonBoard.own.firstLength,
+        improveCount: pythonBoard.own.improveCount,
+      }
+    : null;
 
   let nextTask = await prisma.task.findFirst({
     where: {
@@ -237,7 +192,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 leaderboard={leaderboard}
                 currentUserRank={currentUserRank}
                 userBest={userBest}
-                csharp={csharpSignature}
+                languages={languages}
+                typedSignature={typedSignature}
               />
             </div>
         </div>

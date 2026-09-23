@@ -1,25 +1,30 @@
-// src/components/task/CsharpTaskView.tsx
-// Проба C#: всё, что видит игрок в режиме C# на странице задачи — редактор,
-// проверка, отправка, открытые тесты и таблица рекордов C#.
+// src/components/task/TypedTaskView.tsx
+// Решение задачи на JavaScript или C#: редактор, проверка на сервере, отправка
+// в рейтинг языка, открытые тесты, таблица рекордов, решения и попытки.
+// Оба языка работают по сигнатуре задачи с типами (tasks.csharp_signature).
 // Питоновская форма (SubmitForm) этот компонент не использует и не меняет.
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CheckCircle, Loader2, LogIn, Play, RotateCcw, Send, XCircle } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { CodeEditor } from './CodeEditor';
-import { LeaderboardTable, type LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
+import { TaskTabs } from './TaskTabs';
+import type { LeaderboardEntry } from '@/components/leaderboard/LeaderboardTable';
 import { calculateCodeLength, cn, pluralizeRu } from '@/lib/utils';
 import {
   CSHARP_USINGS,
-  formatCsharpHeader,
   formatCsharpValue,
   validateCsharpExpression,
   type CsharpSignature,
 } from '@/lib/csharp';
+import { formatJsValue, validateJsExpression } from '@/lib/javascript';
+import { LANGUAGE_LABELS } from '@/lib/languages';
+
+export type TypedLanguage = 'javascript' | 'csharp';
 
 interface Detail {
   index: number;
@@ -44,20 +49,47 @@ interface RunResult {
   previousBestLength?: number | null;
   improvedBy?: number | null;
   tookFirstPlaceFrom?: string | null;
+  pointsEarned?: number;
+  pointsBreakdown?: string[];
 }
 
-interface CsharpLeaderboardEntry extends LeaderboardEntry {
-  code: string | null;
+interface OwnRecord {
+  codeLength: number;
+  rank: number;
 }
 
-interface CsharpBoard {
-  entries: CsharpLeaderboardEntry[];
-  own: { codeLength: number; rank: number | null } | null;
-  canViewCode: boolean;
-  hiddenReason: string | null;
-}
+// Всё, чем языки отличаются на экране
+const LANGUAGE_VIEW: Record<
+  TypedLanguage,
+  {
+    validate: (code: string) => { valid: true } | { valid: false; error: string };
+    formatValue: (value: unknown, type: CsharpSignature['args'][number]['type']) => string;
+    callName: string;
+    placeholder: string;
+    checkingText: string;
+    runningText: string;
+  }
+> = {
+  javascript: {
+    validate: validateJsExpression,
+    formatValue: formatJsValue,
+    callName: 'solution',
+    placeholder: 'выражение на JavaScript...',
+    checkingText: 'Проверяется...',
+    runningText: 'Проверяется на сервере...',
+  },
+  csharp: {
+    validate: validateCsharpExpression,
+    formatValue: formatCsharpValue,
+    callName: 'Solution',
+    placeholder: 'выражение на C#...',
+    checkingText: 'Собирается...',
+    runningText: 'Собирается и проверяется на сервере (C# — пара секунд)...',
+  },
+};
 
-interface CsharpTaskViewProps {
+interface TypedTaskViewProps {
+  language: TypedLanguage;
   taskSlug: string;
   signature: CsharpSignature;
   isLoggedIn: boolean;
@@ -67,17 +99,20 @@ interface CsharpTaskViewProps {
   hiddenTestsCount?: number;
 }
 
-export function CsharpTaskView({
+export function TypedTaskView({
+  language,
   taskSlug,
   signature,
   isLoggedIn,
   switcher,
   testcases,
   hiddenTestsCount = 0,
-}: CsharpTaskViewProps) {
+}: TypedTaskViewProps) {
+  const view = LANGUAGE_VIEW[language];
+  const label = LANGUAGE_LABELS[language];
   const pathname = usePathname();
-  const returnTo = encodeURIComponent(pathname);
-  const draftKey = `task_draft_csharp:${taskSlug}`;
+  const returnTo = encodeURIComponent(`${pathname}?lang=${language}`);
+  const draftKey = `task_draft_${language}:${taskSlug}`;
 
   const [code, setCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
@@ -85,24 +120,24 @@ export function CsharpTaskView({
   const [queueStatus, setQueueStatus] = useState<string | null>(null);
   const [checkResult, setCheckResult] = useState<RunResult | null>(null);
   const [submitResult, setSubmitResult] = useState<RunResult | null>(null);
-  const [board, setBoard] = useState<CsharpBoard | null>(null);
-  const [boardError, setBoardError] = useState<string | null>(null);
+  const [board, setBoard] = useState<LeaderboardEntry[]>([]);
+  const [own, setOwn] = useState<OwnRecord | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const header = useMemo(() => formatCsharpHeader(signature), [signature]);
-  const validation = validateCsharpExpression(code);
+  const validation = view.validate(code);
   const length = calculateCodeLength(code);
   const hasCode = code.trim().length > 0;
   const canRun = validation.valid && hasCode;
 
-  // Черновик C# хранится отдельно от питоновского
+  // Черновик у каждого языка свой
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(draftKey);
-      if (saved) setCode(saved);
+      setCode(window.localStorage.getItem(draftKey) || '');
     } catch {
       // Хранилище браузера недоступно — просто без черновика
     }
+    setCheckResult(null);
+    setSubmitResult(null);
   }, [draftKey]);
 
   useEffect(() => {
@@ -116,22 +151,20 @@ export function CsharpTaskView({
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/tasks/${taskSlug}/csharp/leaderboard`, { cache: 'no-store' })
+    fetch(`/api/tasks/${taskSlug}/leaderboard?lang=${language}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
-        if (!alive) return;
-        if (json.success) {
-          setBoard(json.data);
-          setBoardError(null);
-        } else {
-          setBoardError(json.error || 'Не удалось загрузить рекорды C#');
-        }
+        if (!alive || !json.success) return;
+        setBoard(json.data || []);
+        setOwn(json.own ? { codeLength: json.own.codeLength, rank: json.own.rank } : null);
       })
-      .catch(() => alive && setBoardError('Не удалось загрузить рекорды C#'));
+      .catch(() => {
+        // Таблица просто останется пустой — решать это не мешает
+      });
     return () => {
       alive = false;
     };
-  }, [taskSlug, refreshKey]);
+  }, [taskSlug, language, refreshKey]);
 
   const handleCheck = async () => {
     if (!canRun || isChecking || isSubmitting) return;
@@ -139,10 +172,10 @@ export function CsharpTaskView({
     setCheckResult(null);
     setSubmitResult(null);
     try {
-      const res = await fetch(`/api/tasks/${taskSlug}/csharp/check`, {
+      const res = await fetch(`/api/tasks/${taskSlug}/check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, language }),
       });
       const json = await res.json();
       setCheckResult(json.success ? json.data : errorResult(length, json.error || 'Не удалось проверить'));
@@ -156,7 +189,7 @@ export function CsharpTaskView({
   const pollJob = useCallback(
     async (jobId: string): Promise<RunResult> => {
       for (let attempt = 0; attempt < 80; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const res = await fetch(`/api/tasks/${taskSlug}/submit?jobId=${encodeURIComponent(jobId)}`, {
           cache: 'no-store',
         });
@@ -168,13 +201,13 @@ export function CsharpTaskView({
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Не удалось получить статус проверки');
         if (json.status === 'queued') setQueueStatus('В очереди на проверку...');
-        if (json.status === 'running') setQueueStatus('Собирается и проверяется на сервере (C# — несколько секунд)...');
+        if (json.status === 'running') setQueueStatus(view.runningText);
         if (json.status === 'done' && json.data) return json.data as RunResult;
         if (json.status === 'failed') throw new Error(json.error || 'Проверка завершилась ошибкой');
       }
       throw new Error('Слишком долго выполняется. Проверь результат чуть позже.');
     },
-    [taskSlug]
+    [taskSlug, view.runningText]
   );
 
   const handleSubmit = async () => {
@@ -184,10 +217,10 @@ export function CsharpTaskView({
     setCheckResult(null);
     setSubmitResult(null);
     try {
-      const res = await fetch(`/api/tasks/${taskSlug}/csharp/submit`, {
+      const res = await fetch(`/api/tasks/${taskSlug}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, language }),
       });
       const json = await res.json();
       if (!json.success || !json.jobId) {
@@ -196,7 +229,7 @@ export function CsharpTaskView({
       }
       const result = await pollJob(json.jobId);
       setSubmitResult(result);
-      if (result.status === 'pass') setRefreshKey((k) => k + 1);
+      setRefreshKey((k) => k + 1);
     } catch (error) {
       setSubmitResult(errorResult(length, error instanceof Error ? error.message : 'Ошибка соединения'));
     } finally {
@@ -211,7 +244,7 @@ export function CsharpTaskView({
     setSubmitResult(null);
   };
 
-  const bestLength = board?.entries[0]?.codeLength ?? null;
+  const bestLength = board[0]?.codeLength ?? null;
   const busy = isChecking || isSubmitting;
 
   return (
@@ -222,42 +255,30 @@ export function CsharpTaskView({
           {switcher}
         </div>
 
-        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary space-y-1.5">
-          <div>
-            {bestLength !== null ? (
-              <>
-                Лучшее решение на C# —{' '}
-                <span className="font-mono text-accent-green font-semibold">{bestLength}</span>{' '}
-                {pluralizeRu(bestLength, ['символ', 'символа', 'символов'])}
-              </>
-            ) : (
-              <>Пока нет решений на C# — стань первым.</>
-            )}
-            {board?.own && (
-              <>
-                , твой рекорд —{' '}
-                <span className="font-mono text-accent-blue font-semibold">{board.own.codeLength}</span>
-                {board.own.rank ? ` (место #${board.own.rank})` : ''}
-              </>
-            )}
-          </div>
-          <div className="text-xs text-text-muted">
-            C# — проба: своя таблица рекордов, в общий рейтинг и очки не идёт.
-          </div>
+        <div className="mb-4 rounded-lg border border-border bg-background-tertiary/50 px-3 py-3 text-sm text-text-secondary">
+          {bestLength !== null ? (
+            <>
+              Лучшее решение на {label} —{' '}
+              <span className="font-mono text-accent-green font-semibold">{bestLength}</span>{' '}
+              {pluralizeRu(bestLength, ['символ', 'символа', 'символов'])}
+            </>
+          ) : (
+            <>Пока нет решений на {label} — стань первым.</>
+          )}
+          {own && (
+            <>
+              , твой рекорд —{' '}
+              <span className="font-mono text-accent-blue font-semibold">{own.codeLength}</span>
+              {` (место #${own.rank})`}
+            </>
+          )}
         </div>
 
         <div className="space-y-4 pb-24 sm:pb-0">
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="bg-[rgb(var(--code-header))] px-3 sm:px-4 py-2 border-b border-[rgb(var(--code-border))] font-mono text-xs sm:text-sm flex items-center justify-between gap-3">
-              <div className="min-w-0 truncate" title={header}>
-                <span className="text-[rgb(var(--code-keyword))]">static</span>{' '}
-                <span className="text-[rgb(var(--code-arg))]">{signature.returns}</span>{' '}
-                <span className="text-[rgb(var(--code-func))]">Solution</span>
-                <span className="text-[rgb(var(--code-muted))]">(</span>
-                <span className="text-[rgb(var(--code-arg))]">
-                  {signature.args.map((a) => `${a.type} ${a.name}`).join(', ')}
-                </span>
-                <span className="text-[rgb(var(--code-muted))]">)</span>
+              <div className="min-w-0 truncate">
+                <SignatureHeader language={language} signature={signature} />
               </div>
               <div className="text-[rgb(var(--code-muted))] whitespace-nowrap">
                 <span className="text-[rgb(var(--code-text))]">Длина:</span>{' '}
@@ -274,44 +295,26 @@ export function CsharpTaskView({
                   value={code}
                   onChange={setCode}
                   disabled={isSubmitting}
-                  placeholder="выражение на C#..."
+                  placeholder={view.placeholder}
                   minimal
                 />
               </div>
-              <div className="flex-shrink-0 px-3 py-3 font-mono text-sm text-[rgb(var(--code-muted))] bg-[rgb(var(--code-header))] border-l border-[rgb(var(--code-border))] flex items-center select-none">
-                ;
-              </div>
+              {language === 'csharp' && (
+                <div className="flex-shrink-0 px-3 py-3 font-mono text-sm text-[rgb(var(--code-muted))] bg-[rgb(var(--code-header))] border-l border-[rgb(var(--code-border))] flex items-center select-none">
+                  ;
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="text-sm text-text-muted space-y-1">
-            <div>
-              Пиши только выражение — оно станет телом метода после{' '}
-              <span className="font-mono">=&gt;</span>. Точка с запятой не нужна.
-            </div>
-            <div className="text-xs">
-              Подключено: <span className="font-mono">{CSHARP_USINGS.join(', ')}</span>. Язык — C# 9 (mono 6.12):
-              LINQ, лямбды, <span className="font-mono">switch</span>-выражения, <span className="font-mono">a[^1]</span>;
-              нет <span className="font-mono">.Order()</span> и <span className="font-mono">[1,2,3]</span>. Рекурсия —
-              через <span className="font-mono">Solution(...)</span>.
-            </div>
-            {/* Условие задачи общее для двух языков, и запреты в нём — питоновские */}
-            <div className="text-xs">
-              Запрещено в C#: <span className="font-mono">;</span>, комментарии,{' '}
-              <span className="font-mono">System.</span>, <span className="font-mono">Console</span>,{' '}
-              <span className="font-mono">Environment</span>, рефлексия (<span className="font-mono">typeof</span>,{' '}
-              <span className="font-mono">GetType</span>…). Питоновские запреты из условия к C# не относятся.
-            </div>
-          </div>
+          <LanguageHints language={language} />
 
-          {hasCode && !validation.valid && (
-            <div className="text-sm text-accent-red">{validation.error}</div>
-          )}
+          {hasCode && !validation.valid && <div className="text-sm text-accent-red">{validation.error}</div>}
 
           <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-3">
             {isLoggedIn ? (
               <Button variant="primary" onClick={handleSubmit} disabled={!canRun || busy} loading={isSubmitting} icon={Send}>
-                Отправить в рейтинг C#
+                Отправить в рейтинг {label}
               </Button>
             ) : (
               <Link href={`/auth?returnTo=${returnTo}`}>
@@ -330,7 +333,7 @@ export function CsharpTaskView({
               icon={isChecking ? Loader2 : Play}
               className={isChecking ? '[&>svg]:animate-spin' : ''}
             >
-              {isChecking ? 'Собирается...' : 'Проверить на сервере'}
+              {isChecking ? view.checkingText : 'Проверить на сервере'}
             </Button>
           </div>
 
@@ -370,8 +373,12 @@ export function CsharpTaskView({
 
           {isSubmitting && queueStatus && <div className="text-sm text-accent-blue">{queueStatus}</div>}
 
-          {submitResult && <ResultCard result={submitResult} kind="submit" />}
-          {checkResult && !submitResult && <ResultCard result={checkResult} kind="check" />}
+          {submitResult && (
+            <ResultCard result={submitResult} kind="submit" label={label} callName={view.callName} />
+          )}
+          {checkResult && !submitResult && (
+            <ResultCard result={checkResult} kind="check" label={label} callName={view.callName} />
+          )}
         </div>
       </Card>
 
@@ -389,9 +396,9 @@ export function CsharpTaskView({
                   <div>
                     Ввод:{' '}
                     <span className="text-text-primary">
-                      Solution(
+                      {view.callName}(
                       {(testcase.inputData.args || [])
-                        .map((value, i) => (signature.args[i] ? formatCsharpValue(value, signature.args[i].type) : ''))
+                        .map((value, i) => (signature.args[i] ? view.formatValue(value, signature.args[i].type) : ''))
                         .join(', ')}
                       )
                     </span>
@@ -411,42 +418,99 @@ export function CsharpTaskView({
             </div>
           )}
           <div className="mt-3 rounded-md border border-border px-3 py-2 text-xs text-text-secondary bg-background-tertiary/40">
-            Ответ сравнивается в том виде, в каком его печатает Python: массив — как{' '}
+            Ответы у всех трёх языков общие и записаны так, как их печатает Python: массив —{' '}
             <span className="font-mono">[1, 2]</span>, строки в массиве — в кавычках{' '}
             <span className="font-mono">[&apos;a&apos;, &apos;b&apos;]</span>, логическое —{' '}
-            <span className="font-mono">True</span>, дробное — <span className="font-mono">3.0</span>. Сайт делает это сам:
-            просто верни массив, <span className="font-mono">bool</span> или <span className="font-mono">double</span>.
-            В рейтинг решение попадает после проверки и на скрытых тестах.
+            <span className="font-mono">True</span>, дробное — <span className="font-mono">3.0</span>. Сайт переводит
+            ответ сам: просто верни массив, логическое значение или число. В рейтинг решение попадает после
+            проверки и на скрытых тестах.
           </div>
         </Card>
       )}
 
       <Card padding="lg">
-        <h3 className="text-base sm:text-lg font-semibold mb-4">Рекорды C#</h3>
-        {boardError && <div className="text-sm text-accent-red">{boardError}</div>}
-        {board && (
-          <div className="space-y-4">
-            <LeaderboardTable entries={board.entries} emptyMessage="Пока нет решений на C#" />
-            {board.canViewCode && board.entries.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Решения</div>
-                {board.entries.slice(0, 20).map((entry) => (
-                  <div key={entry.rank} className="rounded-lg border border-border bg-background-tertiary/40 px-3 py-2">
-                    <div className="text-xs text-text-muted mb-1">
-                      #{entry.rank} {entry.nickname} — {entry.codeLength}{' '}
-                      {pluralizeRu(entry.codeLength, ['символ', 'символа', 'символов'])}
-                    </div>
-                    <pre className="font-mono text-sm whitespace-pre-wrap break-all text-text-primary">{entry.code}</pre>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              board.entries.length > 0 &&
-              board.hiddenReason && <div className="text-sm text-text-muted">{board.hiddenReason}</div>
-            )}
-          </div>
-        )}
+        <TaskTabs
+          leaderboard={board}
+          taskSlug={taskSlug}
+          refreshKey={refreshKey}
+          currentUserRank={own?.rank}
+          isLoggedIn={isLoggedIn}
+          language={language}
+        />
       </Card>
+    </div>
+  );
+}
+
+function SignatureHeader({ language, signature }: { language: TypedLanguage; signature: CsharpSignature }) {
+  if (language === 'javascript') {
+    return (
+      <>
+        <span className="text-[rgb(var(--code-keyword))]">const</span>{' '}
+        <span className="text-[rgb(var(--code-func))]">solution</span>{' '}
+        <span className="text-[rgb(var(--code-muted))]">= (</span>
+        <span className="text-[rgb(var(--code-arg))]">{signature.args.map((a) => a.name).join(', ')}</span>
+        <span className="text-[rgb(var(--code-muted))]">)</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <span className="text-[rgb(var(--code-keyword))]">static</span>{' '}
+      <span className="text-[rgb(var(--code-arg))]">{signature.returns}</span>{' '}
+      <span className="text-[rgb(var(--code-func))]">Solution</span>
+      <span className="text-[rgb(var(--code-muted))]">(</span>
+      <span className="text-[rgb(var(--code-arg))]">
+        {signature.args.map((a) => `${a.type} ${a.name}`).join(', ')}
+      </span>
+      <span className="text-[rgb(var(--code-muted))]">)</span>
+    </>
+  );
+}
+
+function LanguageHints({ language }: { language: TypedLanguage }) {
+  if (language === 'javascript') {
+    return (
+      <div className="text-sm text-text-muted space-y-1">
+        <div>
+          Пиши только выражение — оно станет телом стрелочной функции после{' '}
+          <span className="font-mono">=&gt;</span>. Точка с запятой не нужна.
+        </div>
+        <div className="text-xs">
+          Язык — JavaScript (Node.js 20): стрелочные функции, <span className="font-mono">map</span>/
+          <span className="font-mono">filter</span>/<span className="font-mono">reduce</span>, spread{' '}
+          <span className="font-mono">[...s]</span>, <span className="font-mono">a.at(-1)</span>,{' '}
+          <span className="font-mono">BigInt</span>. Можно присваивать новой переменной прямо в выражении:{' '}
+          <span className="font-mono">(s=0,a.map(x=&gt;s+=x),s)</span>. Рекурсия — через{' '}
+          <span className="font-mono">solution(...)</span>.
+        </div>
+        <div className="text-xs">
+          Запрещено: <span className="font-mono">;</span>, <span className="font-mono">require</span>,{' '}
+          <span className="font-mono">import</span>, <span className="font-mono">process</span>,{' '}
+          <span className="font-mono">eval</span>, <span className="font-mono">Function</span>,{' '}
+          <span className="font-mono">globalThis</span>. Питоновские запреты из условия к JavaScript не относятся.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="text-sm text-text-muted space-y-1">
+      <div>
+        Пиши только выражение — оно станет телом метода после <span className="font-mono">=&gt;</span>. Точка с
+        запятой не нужна.
+      </div>
+      <div className="text-xs">
+        Подключено: <span className="font-mono">{CSHARP_USINGS.join(', ')}</span>. Язык — C# 9 (mono 6.12): LINQ,
+        лямбды, <span className="font-mono">switch</span>-выражения, <span className="font-mono">a[^1]</span>; нет{' '}
+        <span className="font-mono">.Order()</span> и <span className="font-mono">[1,2,3]</span>. Рекурсия — через{' '}
+        <span className="font-mono">Solution(...)</span>.
+      </div>
+      <div className="text-xs">
+        Запрещено: <span className="font-mono">;</span>, комментарии, <span className="font-mono">System.</span>,{' '}
+        <span className="font-mono">Console</span>, <span className="font-mono">Environment</span>, рефлексия (
+        <span className="font-mono">typeof</span>, <span className="font-mono">GetType</span>…). Питоновские запреты из
+        условия к C# не относятся.
+      </div>
     </div>
   );
 }
@@ -455,7 +519,17 @@ function errorResult(length: number, message: string): RunResult {
   return { status: 'error', length, testsPassed: 0, testsTotal: 0, errorMessage: message, details: [] };
 }
 
-function ResultCard({ result, kind }: { result: RunResult; kind: 'check' | 'submit' }) {
+function ResultCard({
+  result,
+  kind,
+  label,
+  callName,
+}: {
+  result: RunResult;
+  kind: 'check' | 'submit';
+  label: string;
+  callName: string;
+}) {
   const passed = result.status === 'pass';
   const failedDetails = result.details.filter((d) => !d.passed);
 
@@ -488,18 +562,29 @@ function ResultCard({ result, kind }: { result: RunResult; kind: 'check' | 'subm
           </div>
           {kind === 'submit' && passed && (
             <div className="text-sm text-text-secondary space-y-0.5">
-              {result.place ? <div>Место в рейтинге C#: #{result.place}</div> : null}
+              {result.place ? (
+                <div>
+                  Место в рейтинге {label}: #{result.place}
+                </div>
+              ) : null}
               {result.isNewBest && result.improvedBy ? (
                 <div className="text-accent-green">Новый личный рекорд: короче на {result.improvedBy}!</div>
               ) : result.isNewBest ? (
-                <div className="text-accent-green">Первое решение этой задачи на C#!</div>
+                <div className="text-accent-green">Первое решение этой задачи на {label}!</div>
               ) : result.previousBestLength !== null && result.previousBestLength !== undefined ? (
                 <div>Твой рекорд остаётся {result.previousBestLength} — попробуй ещё короче.</div>
               ) : null}
               {result.tookFirstPlaceFrom && (
                 <div className="text-accent-green">Ты забрал первое место у {result.tookFirstPlaceFrom}!</div>
               )}
-              <div className="text-xs text-text-muted">C# — проба: очки не начисляются.</div>
+              {result.pointsEarned ? (
+                <div className="text-accent-blue">
+                  +{result.pointsEarned} {pluralizeRu(result.pointsEarned, ['очко', 'очка', 'очков'])}
+                  {result.pointsBreakdown && result.pointsBreakdown.length > 0 && (
+                    <span className="text-text-muted"> ({result.pointsBreakdown.join('; ')})</span>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -519,9 +604,12 @@ function ResultCard({ result, kind }: { result: RunResult; kind: 'check' | 'subm
                 Скрытый тест не пройден{detail.error ? ` (${detail.error})` : ''}
               </div>
             ) : (
-              <div key={detail.index} className="rounded-md border border-border bg-background/40 px-3 py-2 font-mono text-xs sm:text-sm space-y-0.5 break-all">
+              <div
+                key={detail.index}
+                className="rounded-md border border-border bg-background/40 px-3 py-2 font-mono text-xs sm:text-sm space-y-0.5 break-all"
+              >
                 <div>
-                  <span className="text-text-muted">Ввод:</span> Solution({detail.input})
+                  <span className="text-text-muted">Ввод:</span> {callName}({detail.input})
                 </div>
                 {detail.error ? (
                   <div className="text-accent-red">{detail.error}</div>

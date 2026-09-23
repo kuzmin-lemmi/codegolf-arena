@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { DEFAULT_LANGUAGE, LANGUAGE_LABELS, parseLanguage } from '@/lib/languages';
 
 export async function GET(
   request: NextRequest,
@@ -10,6 +11,13 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
+
+    // Решения — одного языка: ?lang=javascript. Без параметра — Python
+    const rawLanguage = request.nextUrl.searchParams.get('lang');
+    const language = rawLanguage === null ? DEFAULT_LANGUAGE : parseLanguage(rawLanguage);
+    if (!language) {
+      return NextResponse.json({ success: false, error: 'Неизвестный язык' }, { status: 400 });
+    }
 
     // Получаем текущего пользователя
     const currentUser = await getCurrentUser(request);
@@ -38,23 +46,27 @@ export async function GET(
       );
     }
 
-    // Проверяем, решил ли пользователь эту задачу
+    // Решения на языке видны тому, кто сам решил задачу на этом языке
     const userBestSubmission = await prisma.bestSubmission.findUnique({
       where: {
-        taskId_userId: {
+        taskId_userId_language: {
           taskId: task.id,
           userId: currentUser.id,
+          language,
         },
       },
+      select: { id: true },
     });
 
-    // Если пользователь не решил задачу — решения скрыты
     if (!userBestSubmission) {
       return NextResponse.json({
         success: true,
         data: {
           canView: false,
-          message: 'Решите задачу, чтобы увидеть решения других участников',
+          message:
+            language === 'python'
+              ? 'Решите задачу, чтобы увидеть решения других участников'
+              : `Решите задачу на ${LANGUAGE_LABELS[language]}, чтобы увидеть решения других участников`,
           solutions: [],
         },
       });
@@ -109,10 +121,11 @@ export async function GET(
 
     // Получаем топ-20 решений
     const bestSubmissions = await prisma.bestSubmission.findMany({
-      where: { taskId: task.id },
+      where: { taskId: task.id, language },
       orderBy: [
         { codeLength: 'asc' },
         { achievedAt: 'asc' },
+        { userId: 'asc' },
       ],
       take: 20,
       include: {

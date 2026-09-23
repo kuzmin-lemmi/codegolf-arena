@@ -6,6 +6,7 @@
  */
 
 import type { Prisma } from '@prisma/client';
+import { isLanguage, LANGUAGE_LABELS, type Language } from '@/lib/languages';
 
 export const NOTIFICATION_TYPES = {
   recordBeaten: 'record_beaten',
@@ -16,6 +17,8 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICA
 export interface RecordBeatenPayload {
   taskSlug: string;
   taskTitle: string;
+  // Язык таблицы рекордов. У уведомлений до 23 сентября 2026 поля нет — это Python
+  language?: Language;
   // ник того, кто побил рекорд
   byNickname: string;
   // его длина решения
@@ -29,8 +32,9 @@ type NotificationClient = Pick<Prisma.TransactionClient, 'notification'>;
 /**
  * Создаёт (или обновляет) уведомление «твой рекорд по задаче побит».
  *
- * Если непрочитанное уведомление по этой задаче уже есть — обновляем его,
- * чтобы серия улучшений одного игрока не превращалась в спам колокольчика.
+ * Если непрочитанное уведомление по этой задаче на этом языке уже есть —
+ * обновляем его, чтобы серия улучшений одного игрока не превращалась в спам
+ * колокольчика.
  */
 export async function notifyRecordBeaten(
   client: NotificationClient,
@@ -39,7 +43,7 @@ export async function notifyRecordBeaten(
   const { userId, taskId, payload } = params;
   const payloadJson = JSON.stringify(payload);
 
-  const existing = await client.notification.findFirst({
+  const unread = await client.notification.findMany({
     where: {
       userId,
       taskId,
@@ -47,8 +51,12 @@ export async function notifyRecordBeaten(
       readAt: null,
     },
     orderBy: { createdAt: 'desc' },
-    select: { id: true },
+    select: { id: true, payloadJson: true },
   });
+  const language = payload.language ?? 'python';
+  const existing = unread.find(
+    (row) => (parsePayload<RecordBeatenPayload>(row.payloadJson)?.language ?? 'python') === language
+  );
 
   if (existing) {
     await client.notification.update({
@@ -103,16 +111,17 @@ export function renderNotification(row: NotificationRow): RenderedNotification {
 
     if (payload?.taskSlug) {
       const delta = Math.max(0, (payload.yourLength || 0) - (payload.newLength || 0));
+      const language = isLanguage(payload.language) ? payload.language : 'python';
 
       return {
         ...base,
-        title: `Твой рекорд побили: ${payload.taskTitle || payload.taskSlug}`,
+        title: `Твой рекорд на ${LANGUAGE_LABELS[language]} побили: ${payload.taskTitle || payload.taskSlug}`,
         text:
           `${payload.byNickname || 'Кто-то'} решил задачу за ${payload.newLength} симв.` +
           (payload.yourLength
             ? ` — твой результат ${payload.yourLength} симв.${delta > 0 ? ` (короче на ${delta})` : ''}`
             : ''),
-        href: `/task/${payload.taskSlug}`,
+        href: language === 'python' ? `/task/${payload.taskSlug}` : `/task/${payload.taskSlug}?lang=${language}`,
       };
     }
   }

@@ -11,6 +11,9 @@
  * Важно: в зачёт идут только PASS-попытки, сделанные внутри окна
  * соревнования (startsAt..endsAt). Решение той же задачи месяц назад
  * в соревновательный результат не попадает.
+ *
+ * Соревнования пока только на Python: суммировать длины решений на разных
+ * языках бессмысленно, а правила для JS и C# решим к первому соревнованию.
  */
 
 import type { Prisma } from '@prisma/client';
@@ -57,6 +60,7 @@ export async function recomputeCompetitionEntry(
     where: {
       userId,
       taskId: { in: taskIds },
+      language: 'python',
       status: 'pass',
       createdAt: {
         gte: competition.startsAt,

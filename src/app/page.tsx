@@ -5,6 +5,8 @@ import { Trophy, Code2, Zap, ArrowRight, Clock, TrendingDown, Medal, Users, Mess
 import { Card, TierBadge, Button, Avatar } from '@/components/ui';
 import { prisma } from '@/lib/db';
 import { formatTimeRemaining } from '@/lib/utils';
+import { LANGUAGE_LABELS, isLanguage } from '@/lib/languages';
+import { getRating } from '@/lib/ratings';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -37,12 +39,13 @@ async function getHomePageData() {
       },
     });
 
-    // Топ-10 лидерборда задачи недели
+    // Топ-10 лидерборда задачи недели. Задача недели пока на Python —
+    // таблицы других языков у неё появятся вместе с новым дизайном главной
     let weeklyLeaderboard: any[] = [];
     if (weeklyChallenge) {
       const bestSubmissions = await prisma.bestSubmission.findMany({
-        where: { taskId: weeklyChallenge.taskId },
-        orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }],
+        where: { taskId: weeklyChallenge.taskId, language: 'python' },
+        orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }, { userId: 'asc' }],
         take: 10,
         include: {
           user: {
@@ -60,20 +63,8 @@ async function getHomePageData() {
       }));
     }
 
-    // Глобальный рейтинг по очкам
-    const globalLeaderboard = await prisma.user.findMany({
-      where: { totalPoints: { gt: 0 } },
-      orderBy: { totalPoints: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        nickname: true,
-        displayName: true,
-        avatarUrl: true,
-        totalPoints: true,
-        _count: { select: { bestSubmissions: true } },
-      },
-    });
+    // Общий рейтинг по очкам (все языки вместе)
+    const globalLeaderboard = await getRating('all', 10);
 
     // Последние решения (только лучшие, без дублей по задаче/пользователю)
     const recentBestSubmissions = await prisma.bestSubmission.findMany({
@@ -86,6 +77,7 @@ async function getHomePageData() {
     });
 
     const recentRecords = recentBestSubmissions.map((s) => ({
+      language: isLanguage(s.language) ? s.language : 'python',
       nickname: s.user.nickname || s.user.displayName,
       profileSlug: s.user.nickname || s.userId,
       taskTitle: s.task.title,
@@ -102,6 +94,7 @@ async function getHomePageData() {
         tier: 'bronze',
       },
       orderBy: [{ bestSubmissions: { _count: 'asc' } }, { createdAt: 'asc' }],
+      // Рекомендуемая первая задача — на Python: он открыт у всех задач
       select: {
         id: true,
         slug: true,
@@ -117,7 +110,7 @@ async function getHomePageData() {
     // Цель по длине для новичка: показываем цифру, но не само решение
     const recommendedBest = recommendedTask
       ? await prisma.bestSubmission.findFirst({
-          where: { taskId: recommendedTask.id },
+          where: { taskId: recommendedTask.id, language: 'python' },
           orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }],
           select: { codeLength: true },
         })
@@ -145,13 +138,13 @@ async function getHomePageData() {
             leaderboard: weeklyLeaderboard,
           }
         : null,
-      globalLeaderboard: globalLeaderboard.map((u, idx) => ({
-        rank: idx + 1,
-        userId: u.id,
-        nickname: u.nickname || u.displayName,
+      globalLeaderboard: globalLeaderboard.map((u) => ({
+        rank: u.rank,
+        userId: u.userId,
+        nickname: u.nickname,
         avatarUrl: u.avatarUrl,
-        points: u.totalPoints,
-        tasksSolved: u._count.bestSubmissions,
+        points: u.points,
+        tasksSolved: u.tasksSolved,
       })),
       recentRecords,
       recommendedTask: recommendedTask
@@ -196,7 +189,7 @@ export default async function HomePage() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 text-accent-blue text-sm font-medium mb-6">
               <Zap className="w-4 h-4" />
-              Python Code Golf
+              Python · JavaScript · C#
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
               Арена <span className="text-accent-blue">однострочников</span>
@@ -340,6 +333,7 @@ export default async function HomePage() {
                             {record.nickname}
                           </Link>
                           <span className="text-accent-green font-mono font-bold">{record.newLength}</span>
+                          <span className="text-xs text-accent-blue">{LANGUAGE_LABELS[record.language]}</span>
                           {record.improvements > 0 && record.firstLength && record.firstLength > record.newLength && (
                             <span className="text-xs text-text-muted font-mono">
                               (было {record.firstLength})
@@ -347,7 +341,11 @@ export default async function HomePage() {
                           )}
                         </div>
                         <Link
-                          href={`/task/${record.taskSlug}`}
+                          href={
+                            record.language === 'python'
+                              ? `/task/${record.taskSlug}`
+                              : `/task/${record.taskSlug}?lang=${record.language}`
+                          }
                           className="text-xs text-text-muted truncate hover:text-accent-blue"
                         >
                           {record.taskTitle}

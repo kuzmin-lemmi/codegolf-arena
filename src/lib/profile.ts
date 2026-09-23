@@ -8,12 +8,15 @@
  */
 
 import { prisma } from '@/lib/db';
+import { isLanguage, type Language } from '@/lib/languages';
+import { getUserLanguageStats, type LanguageStats } from '@/lib/ratings';
 import type { TaskTier } from '@/types';
 
 export interface PublicProfileSolution {
   slug: string;
   title: string;
   tier: TaskTier;
+  language: Language;
   codeLength: number;
   firstLength: number | null;
   rank: number;
@@ -27,6 +30,7 @@ export interface PublicProfile {
   name: string;
   avatarUrl: string | null;
   totalPoints: number;
+  // Задач, решённых хотя бы на одном языке
   tasksSolved: number;
   totalSubmissions: number;
   firstPlaces: number;
@@ -35,6 +39,8 @@ export interface PublicProfile {
   charsSaved: number;
   createdAt: Date;
   topSolutions: PublicProfileSolution[];
+  // Очки, задачи и место в рейтинге каждого языка
+  languageStats: LanguageStats[];
 }
 
 const TOP_SOLUTIONS_LIMIT = 12;
@@ -89,12 +95,13 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
   const user = await findPublicUser(slugOrId);
   if (!user) return null;
 
-  const [solutionRows, statsRows, totalSubmissions, betterRanked] = await Promise.all([
+  const [solutionRows, statsRows, totalSubmissions, betterRanked, languageStats] = await Promise.all([
     prisma.$queryRaw<
       Array<{
         slug: string;
         title: string;
         tier: string;
+        language: string;
         codeLength: number;
         firstLength: number | null;
         achievedAt: Date;
@@ -105,6 +112,7 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
         t.slug AS "slug",
         t.title AS "title",
         t.tier AS "tier",
+        ranked.language AS "language",
         ranked.code_length AS "codeLength",
         ranked.first_length AS "firstLength",
         ranked.achieved_at AS "achievedAt",
@@ -113,11 +121,12 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
         SELECT
           task_id,
           user_id,
+          language,
           code_length,
           first_length,
           achieved_at,
           ROW_NUMBER() OVER (
-            PARTITION BY task_id
+            PARTITION BY task_id, language
             ORDER BY code_length ASC, achieved_at ASC, user_id ASC
           ) AS rnk
         FROM best_submissions
@@ -136,7 +145,7 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
       }>
     >`
       SELECT
-        COUNT(*) AS "solved",
+        COUNT(DISTINCT ranked.task_id) AS "solved",
         COUNT(*) FILTER (WHERE ranked.rnk = 1) AS "firstPlaces",
         MIN(ranked.rnk) AS "bestRank",
         COALESCE(SUM(GREATEST(COALESCE(ranked.first_length, ranked.code_length) - ranked.code_length, 0)), 0) AS "charsSaved"
@@ -147,7 +156,7 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
           code_length,
           first_length,
           ROW_NUMBER() OVER (
-            PARTITION BY task_id
+            PARTITION BY task_id, language
             ORDER BY code_length ASC, achieved_at ASC, user_id ASC
           ) AS rnk
         FROM best_submissions
@@ -158,6 +167,7 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
     user.totalPoints > 0
       ? prisma.user.count({ where: { totalPoints: { gt: user.totalPoints } } })
       : Promise.resolve(null),
+    getUserLanguageStats(user.id),
   ]);
 
   const stats = statsRows?.[0];
@@ -179,10 +189,12 @@ export async function getPublicProfile(slugOrId: string): Promise<PublicProfile 
       slug: row.slug,
       title: row.title,
       tier: row.tier as TaskTier,
+      language: isLanguage(row.language) ? row.language : 'python',
       codeLength: Number(row.codeLength),
       firstLength: row.firstLength === null ? null : Number(row.firstLength),
       rank: Number(row.rank),
       achievedAt: row.achievedAt,
     })),
+    languageStats,
   };
 }

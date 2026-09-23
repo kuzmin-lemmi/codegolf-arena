@@ -16,6 +16,9 @@ import {
 } from '@/lib/submission-jobs';
 import { validateMutationRequest } from '@/lib/security';
 import { resolveEnvId } from '@/lib/environments';
+import { isLanguage, LANGUAGE_LABELS, type Language } from '@/lib/languages';
+import { getTaskLanguages } from '@/lib/language-settings';
+import { isTypedLanguage, validateTypedExpression } from '@/lib/language-submission';
 
 export async function GET(
   request: NextRequest,
@@ -106,13 +109,20 @@ export async function POST(
     const currentUser = await getCurrentUser(request);
     const body = await request.json();
     const { code, env_id } = body;
-    const envId = resolveEnvId(env_id);
+    // Нет поля — Python: так отправляли решения до появления других языков
+    const language: Language | null = body.language === undefined ? 'python' : isLanguage(body.language) ? body.language : null;
+    // Окружения (math, itertools…) есть только у Python
+    const envId = resolveEnvId(language === 'python' ? env_id : undefined);
+
+    if (!language) {
+      return NextResponse.json({ success: false, error: 'Неизвестный язык' }, { status: 400 });
+    }
 
     if (!code || typeof code !== 'string') {
       return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 });
     }
 
-    const validation = validateOneliner(code);
+    const validation = isTypedLanguage(language) ? validateTypedExpression(language, code) : validateOneliner(code);
     if (!validation.valid) {
       return NextResponse.json({ success: false, error: validation.error }, { status: 400 });
     }
@@ -126,11 +136,18 @@ export async function POST(
 
     const task = await prisma.task.findUnique({
       where: { slug },
-      select: { id: true, constraintsJson: true, status: true },
+      select: { id: true, constraintsJson: true, status: true, csharpSignature: true },
     });
 
     if (!task || task.status !== 'published') {
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+    }
+
+    if (!getTaskLanguages(task).includes(language)) {
+      return NextResponse.json(
+        { success: false, error: `Задача не открыта для ${LANGUAGE_LABELS[language]}` },
+        { status: 404 }
+      );
     }
 
     const rateLimitResult = await checkRateLimit(currentUser.id, task.id);
@@ -155,8 +172,9 @@ export async function POST(
       );
     }
 
+    // Запрещённые токены в условии задачи написаны для Python
     const constraints = JSON.parse(task.constraintsJson);
-    for (const token of constraints.forbidden_tokens || []) {
+    for (const token of language === 'python' ? constraints.forbidden_tokens || [] : []) {
       if (code.includes(token)) {
         return NextResponse.json(
           { success: false, error: `Запрещённый токен: ${token}` },
@@ -165,8 +183,11 @@ export async function POST(
       }
     }
 
-    const codeHash = createHash('sha256').update(`${task.id}:${envId}:${code}`).digest('hex');
-    const dedupKey = `${currentUser.id}:${task.id}:${envId}:${codeHash}`;
+    // Ключ Python — без языка, как до появления других языков: так совпадают
+    // с уже стоящими в очереди заданиями во время выкладки
+    const scope = language === 'python' ? envId : language;
+    const codeHash = createHash('sha256').update(`${task.id}:${scope}:${code}`).digest('hex');
+    const dedupKey = `${currentUser.id}:${task.id}:${scope}:${codeHash}`;
 
     try {
       const jobId = await enqueueTaskSubmissionJob({
@@ -177,7 +198,7 @@ export async function POST(
           userId: currentUser.id,
           taskSlug: slug,
           code,
-          envId,
+          ...(language === 'python' ? { envId } : { language }),
         },
       });
 

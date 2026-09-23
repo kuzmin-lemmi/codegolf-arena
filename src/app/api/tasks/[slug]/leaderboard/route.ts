@@ -1,7 +1,14 @@
 // src/app/api/tasks/[slug]/leaderboard/route.ts
+// Таблица рекордов задачи на одном языке: ?lang=python|javascript|csharp
+// (без параметра — Python). Для вошедшего игрока — ещё и его место (own).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { DEFAULT_LANGUAGE, parseLanguage } from '@/lib/languages';
+import { getTaskBoard } from '@/lib/task-board';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
@@ -15,7 +22,12 @@ export async function GET(
     const parsed = rawLimit ? Number.parseInt(rawLimit, 10) : NaN;
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 100) : 50;
 
-    // Находим задачу
+    const rawLanguage = searchParams.get('lang');
+    const language = rawLanguage === null ? DEFAULT_LANGUAGE : parseLanguage(rawLanguage);
+    if (!language) {
+      return NextResponse.json({ success: false, error: 'Неизвестный язык' }, { status: 400 });
+    }
+
     const task = await prisma.task.findUnique({
       where: { slug },
       select: { id: true, status: true },
@@ -28,40 +40,16 @@ export async function GET(
       );
     }
 
-    // Получаем лучшие решения
-    const bestSubmissions = await prisma.bestSubmission.findMany({
-      where: { taskId: task.id },
-      orderBy: [
-        { codeLength: 'asc' },
-        { achievedAt: 'asc' },
-      ],
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
-
-    // Формируем лидерборд с рангами
-    const leaderboard = bestSubmissions.map((bs, index) => ({
-      rank: index + 1,
-      userId: bs.user.id,
-      nickname: bs.user.nickname || bs.user.displayName,
-      profileSlug: bs.user.nickname || bs.user.id,
-      avatarUrl: bs.user.avatarUrl,
-      codeLength: bs.codeLength,
-      achievedAt: bs.achievedAt,
-    }));
+    const currentUser = await getCurrentUser(request);
+    const board = await getTaskBoard({ taskId: task.id, language, userId: currentUser?.id, limit });
 
     return NextResponse.json({
       success: true,
-      data: leaderboard,
+      data: board.entries.map((entry) => ({
+        ...entry,
+        isCurrentUser: currentUser?.id === entry.userId,
+      })),
+      own: board.own,
     });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);

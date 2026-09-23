@@ -9,15 +9,15 @@ import { AuthProvider } from '@/context/AuthContext';
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: {
-    default: 'Арена однострочников — Python code-golf соревнования',
+    default: 'Арена однострочников — код-гольф на Python, JavaScript и C#',
     template: '%s — Арена однострочников',
   },
   description:
-    'Решай задачи на Python в одну строку. Соревнуйся за самый короткий код. Еженедельные турниры и рейтинги.',
-  keywords: ['python', 'code golf', 'однострочники', 'программирование', 'соревнования', 'stepik'],
-  authors: [{ name: 'Arena Oneliners' }],
-  creator: 'Arena Oneliners',
-  publisher: 'Arena Oneliners',
+    'Решай задачи в одну строку на Python, JavaScript или C#. Соревнуйся за самый короткий код. Рейтинги по каждому языку.',
+  keywords: ['python', 'javascript', 'c#', 'code golf', 'однострочники', 'программирование', 'соревнования', 'stepik'],
+  authors: [{ name: 'Арена однострочников' }],
+  creator: 'Арена однострочников',
+  publisher: 'Арена однострочников',
   formatDetection: {
     email: false,
     address: false,
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     locale: 'ru_RU',
     url: '/',
     siteName: 'Арена однострочников',
-    title: 'Арена однострочников — Python code-golf',
-    description: 'Решай задачи на Python в одну строку. Соревнуйся за самый короткий код.',
+    title: 'Арена однострочников — код-гольф на Python, JavaScript и C#',
+    description: 'Решай задачи в одну строку на Python, JavaScript или C#. Соревнуйся за самый короткий код.',
     images: [
       {
         url: '/og-image.svg',
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Арена однострочников',
-    description: 'Python code-golf соревнования',
+    description: 'Код-гольф на Python, JavaScript и C#',
     images: ['/og-image.svg'],
   },
   robots: {

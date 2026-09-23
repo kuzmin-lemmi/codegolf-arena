@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { runTaskSubmission } from '@/lib/submission-executor';
-import { runCsharpSubmission } from '@/lib/csharp-submission';
+import { isTypedLanguage, runTypedSubmission } from '@/lib/language-submission';
 import type { SubmissionResponseData, TaskSubmitPayload } from '@/lib/submission-types';
 
 const MAX_CONCURRENT = 2;
@@ -186,10 +186,9 @@ async function claimNextJob(): Promise<{ id: string; payloadJson: string } | nul
 async function processJob(jobId: string, payloadJson: string) {
   try {
     const payload = JSON.parse(payloadJson) as TaskSubmitPayload;
-    const result =
-      payload.language === 'csharp'
-        ? await runCsharpSubmission(payload)
-        : await runTaskSubmission(payload);
+    const result = isTypedLanguage(payload.language)
+      ? await runTypedSubmission(payload.language, payload)
+      : await runTaskSubmission(payload);
 
     await prisma.submissionJob.update({
       where: { id: jobId },

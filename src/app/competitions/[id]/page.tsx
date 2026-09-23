@@ -26,7 +26,8 @@ export async function generateMetadata({ params }: Props) {
   }
 
   return {
-    title: `${competition.title} — Арена однострочников`,
+    // Название сайта к заголовку добавляет шаблон в layout.tsx
+    title: competition.title,
     alternates: {
       canonical: `/competitions/${id}`,
     },
@@ -113,6 +114,8 @@ export default async function CompetitionPage({ params }: Props) {
         where: {
           userId: currentUser.id,
           taskId: { in: taskIds },
+          // Соревнования пока только на Python (src/lib/competitions.ts)
+          language: 'python',
           status: 'pass',
           createdAt: { gte: startsAt, lte: endsAt },
         },

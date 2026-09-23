@@ -18,10 +18,10 @@ const SUBMIT_STATUS_MAX_REQUESTS = 20;
 const SUBMIT_IP_WINDOW_MS = 60 * 1000;
 const SUBMIT_IP_MAX_REQUESTS = 30;
 
-// Черновая проверка C# идёт на сервере (для C# нет проверки в браузере)
-// и стоит секунды процессора — поэтому свой, более строгий лимит
-const CSHARP_CHECK_WINDOW_MS = 60 * 1000;
-const CSHARP_CHECK_MAX_REQUESTS = 12;
+// Черновая проверка JavaScript и C# идёт на сервере (для Python — в браузере).
+// Лимит с одного адреса — отдельно по языку: сборка C# дорогая, запуск JS — нет
+const SERVER_CHECK_WINDOW_MS = 60 * 1000;
+const SERVER_CHECK_MAX_REQUESTS = { javascript: 30, csharp: 12 } as const;
 
 const MAX_STORE_SIZE = 10000;
 
@@ -210,10 +210,15 @@ export async function checkSubmitIpRateLimit(
   return checkLimit(`submit-ip:${ip}`, SUBMIT_IP_WINDOW_MS, SUBMIT_IP_MAX_REQUESTS);
 }
 
-export async function checkCsharpCheckRateLimit(
-  ip: string
+export async function checkServerCheckRateLimit(
+  ip: string,
+  language: keyof typeof SERVER_CHECK_MAX_REQUESTS
 ): Promise<{ allowed: boolean; retryAfter?: number; remaining?: number }> {
-  return checkLimit(`csharp-check:${ip}`, CSHARP_CHECK_WINDOW_MS, CSHARP_CHECK_MAX_REQUESTS);
+  return checkLimit(
+    `server-check:${language}:${ip}`,
+    SERVER_CHECK_WINDOW_MS,
+    SERVER_CHECK_MAX_REQUESTS[language]
+  );
 }
 
 export function getClientIP(request: Request): string {

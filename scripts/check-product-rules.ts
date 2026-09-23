@@ -16,6 +16,7 @@ import {
 import { pluralizeRu } from '../src/lib/utils';
 import { renderNotification, NOTIFICATION_TYPES } from '../src/lib/notifications';
 import { compareCompetitionEntries } from '../src/lib/competitions';
+import { parseLanguage, parseRatingScope } from '../src/lib/languages';
 
 // Очки за первое решение
 assert.strictEqual(getPassPoints('bronze'), 10);
@@ -84,6 +85,33 @@ assert.ok(rendered.text.includes('короче на 3'), rendered.text);
 assert.strictEqual(rendered.href, '/task/sum-digits');
 assert.strictEqual(rendered.isRead, false);
 
+// Уведомление о рекорде на другом языке ведёт в таблицу этого языка
+const renderedJs = renderNotification({
+  id: 'n3',
+  type: NOTIFICATION_TYPES.recordBeaten,
+  payloadJson: JSON.stringify({
+    taskSlug: 'sum-digits',
+    taskTitle: 'Сумма цифр',
+    language: 'javascript',
+    byNickname: 'golfer',
+    newLength: 20,
+    yourLength: 25,
+  }),
+  readAt: null,
+  createdAt: new Date(),
+});
+assert.ok(renderedJs.title.includes('JavaScript'), renderedJs.title);
+assert.strictEqual(renderedJs.href, '/task/sum-digits?lang=javascript');
+assert.ok(rendered.title.includes('Python'), 'старые уведомления без языка — это Python');
+
+// Языки и рейтинги: неизвестное значение не превращается в язык
+assert.strictEqual(parseLanguage('csharp'), 'csharp');
+assert.strictEqual(parseLanguage('ruby'), null);
+assert.strictEqual(parseLanguage(undefined), null);
+assert.strictEqual(parseRatingScope('javascript'), 'javascript');
+assert.strictEqual(parseRatingScope('all'), 'all');
+assert.strictEqual(parseRatingScope("python' OR 1=1"), 'all');
+
 const broken = renderNotification({
   id: 'n2',
   type: 'record_beaten',
@@ -110,4 +138,4 @@ assert.deepStrictEqual(
   ['2026-01-01', '2026-01-02']
 );
 
-console.log('all points/notifications/competition checks passed');
+console.log('all points/notifications/competition/language checks passed');

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { DEFAULT_LANGUAGE, parseLanguage } from '@/lib/languages';
 
 const MAX_ATTEMPTS = 30;
 const MAX_PASSES_FOR_HISTORY = 500;
@@ -18,6 +19,14 @@ export async function GET(
     }
 
     const { slug } = await params;
+
+    // История попыток на одном языке: ?lang=javascript. Без параметра — Python
+    const rawLanguage = request.nextUrl.searchParams.get('lang');
+    const language = rawLanguage === null ? DEFAULT_LANGUAGE : parseLanguage(rawLanguage);
+    if (!language) {
+      return NextResponse.json({ success: false, error: 'Неизвестный язык' }, { status: 400 });
+    }
+
     const task = await prisma.task.findUnique({
       where: { slug },
       select: { id: true, status: true },
@@ -32,6 +41,7 @@ export async function GET(
         where: {
           taskId: task.id,
           userId: currentUser.id,
+          language,
         },
         orderBy: { createdAt: 'desc' },
         take: MAX_ATTEMPTS,
@@ -51,6 +61,7 @@ export async function GET(
         where: {
           taskId: task.id,
           userId: currentUser.id,
+          language,
           status: 'pass',
         },
         orderBy: { createdAt: 'asc' },
@@ -62,7 +73,7 @@ export async function GET(
         },
       }),
       prisma.submission.count({
-        where: { taskId: task.id, userId: currentUser.id },
+        where: { taskId: task.id, userId: currentUser.id, language },
       }),
     ]);
 

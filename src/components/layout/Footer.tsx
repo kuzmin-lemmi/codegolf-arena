@@ -35,15 +35,15 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-sm text-text-secondary text-center md:text-left max-w-md">
-              Арена для коротких Python-решений. Пиши в одну строку, побеждай длиной и чистотой мысли.
+              Арена коротких решений на Python, JavaScript и C#. Пиши в одну строку, побеждай длиной и чистотой мысли.
             </p>
             <div className="flex items-center gap-2">
-              <span className="badge bg-background-tertiary text-text-secondary border border-border/60">Python</span>
+              <span className="badge bg-background-tertiary text-text-secondary border border-border/60">Python · JS · C#</span>
               <span className="badge bg-background-tertiary text-text-secondary border border-border/60">1 строка</span>
               <span className="badge bg-background-tertiary text-text-secondary border border-border/60">Код-гольф</span>
             </div>
             <p className="text-xs text-text-muted">
-              © {currentYear} Arena Oneliners. Все права защищены.
+              © {currentYear} Арена однострочников
             </p>
           </div>
 

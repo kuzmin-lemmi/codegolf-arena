@@ -30,6 +30,7 @@ async function main() {
       id: true,
       taskId: true,
       userId: true,
+      language: true,
       codeLength: true,
       firstLength: true,
       improveCount: true,
@@ -47,7 +48,7 @@ async function main() {
 
   for (const best of bests) {
     const passes = await prisma.submission.findMany({
-      where: { taskId: best.taskId, userId: best.userId, status: 'pass' },
+      where: { taskId: best.taskId, userId: best.userId, language: best.language, status: 'pass' },
       orderBy: { createdAt: 'asc' },
       select: { codeLength: true },
     });
@@ -80,18 +81,22 @@ async function main() {
       improvePoints += award.points;
     }
 
-    const isLeader = await isTaskLeader(best.taskId, best.userId);
+    const isLeader = await isTaskLeader(best.taskId, best.language, best.userId);
+    const retroForTask = Math.max(0, improvePoints - best.improvePoints);
 
     const data: {
       firstLength?: number;
       improveCount?: number;
       improvePoints?: number;
       firstPlaceAwarded?: boolean;
+      points?: { increment: number };
     } = {};
 
     if (best.firstLength === null) data.firstLength = firstLength;
     if (best.improveCount !== improveCount) data.improveCount = improveCount;
     if (retroPoints && best.improvePoints !== improvePoints) data.improvePoints = improvePoints;
+    // Очки языка — сумма best_submissions.points: рейтинг языка и общий не должны разойтись
+    if (retroPoints && retroForTask > 0) data.points = { increment: retroForTask };
     if (isLeader && !best.firstPlaceAwarded) data.firstPlaceAwarded = true;
 
     if (Object.keys(data).length > 0) {
@@ -99,7 +104,6 @@ async function main() {
       updated += 1;
     }
 
-    const retroForTask = Math.max(0, improvePoints - best.improvePoints);
     if (retroForTask > 0) {
       retroTotal += retroForTask;
       retroByUser.set(best.userId, (retroByUser.get(best.userId) || 0) + retroForTask);
@@ -127,9 +131,9 @@ async function main() {
   console.log(`retro points awarded: ${retroTotal} for ${retroByUser.size} users`);
 }
 
-async function isTaskLeader(taskId: string, userId: string): Promise<boolean> {
+async function isTaskLeader(taskId: string, language: string, userId: string): Promise<boolean> {
   const leader = await prisma.bestSubmission.findFirst({
-    where: { taskId },
+    where: { taskId, language },
     orderBy: [{ codeLength: 'asc' }, { achievedAt: 'asc' }, { userId: 'asc' }],
     select: { userId: true },
   });

@@ -40,6 +40,8 @@ async function main() {
     const participants = await prisma.submission.findMany({
       where: {
         taskId: { in: taskIds },
+        // Соревнования пока только на Python (src/lib/competitions.ts)
+        language: 'python',
         status: 'pass',
         createdAt: { gte: competition.startsAt, lte: competition.endsAt },
       },

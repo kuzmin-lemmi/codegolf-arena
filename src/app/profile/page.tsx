@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, TierBadge, Avatar } from '@/components/ui';
 import { ShareProfile } from '@/components/profile/ShareProfile';
+import { LanguagePoints } from '@/components/profile/LanguagePoints';
+import { LANGUAGE_LABELS } from '@/lib/languages';
 import { formatDate, cn, pluralizeRu } from '@/lib/utils';
 import { useProfile } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
@@ -280,6 +282,7 @@ export default function ProfilePage() {
                   value={data.charsSaved ?? 0}
                 />
               </div>
+              <LanguagePoints stats={data.languageStats || []} />
               <p className="text-xs text-text-muted mt-4">
                 Очки дают за первое решение задачи, за каждое укорачивание своего рекорда и за
                 первый выход на #1.{' '}
@@ -398,14 +401,15 @@ export default function ProfilePage() {
                 <div className="space-y-3">
                   {solvedTasks.map((task) => (
                     <Link
-                      key={task.slug}
-                      href={`/task/${task.slug}`}
+                      key={`${task.slug}:${task.language}`}
+                      href={task.language === 'python' ? `/task/${task.slug}` : `/task/${task.slug}?lang=${task.language}`}
                       className="flex items-center gap-4 p-4 bg-background-tertiary rounded-lg hover:bg-background-tertiary/70 transition-colors group"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium truncate">{task.title}</span>
                           <TierBadge tier={task.tier} />
+                          <span className="text-xs text-accent-blue">{LANGUAGE_LABELS[task.language] ?? task.language}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-text-secondary">
                           <span>

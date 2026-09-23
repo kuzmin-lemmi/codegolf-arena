@@ -1,11 +1,13 @@
-// src/app/api/tasks/[slug]/csharp/check/route.ts
-// Проба C#: черновая проверка на открытых тестах. Для Python это делает
-// Pyodide в браузере, для C# такого нет — проверяем на сервере, без записи в базу.
+// src/app/api/tasks/[slug]/check/route.ts
+// Черновая проверка JavaScript и C# на открытых тестах, без записи в базу.
+// Для Python это делает Pyodide в браузере.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { checkCsharpDraft } from '@/lib/csharp-submission';
-import { CsharpBusyError, isCsharpEnabled } from '@/lib/csharp-runner';
-import { checkCsharpCheckRateLimit, getClientIP } from '@/lib/rate-limiter';
+import { checkTypedDraft, isTypedLanguage } from '@/lib/language-submission';
+import { CsharpBusyError } from '@/lib/csharp-runner';
+import { isLanguageEnabled } from '@/lib/language-settings';
+import { LANGUAGE_LABELS } from '@/lib/languages';
+import { checkServerCheckRateLimit, getClientIP } from '@/lib/rate-limiter';
 import { validateMutationRequest } from '@/lib/security';
 
 export async function POST(
@@ -15,12 +17,23 @@ export async function POST(
   const csrfError = validateMutationRequest(request);
   if (csrfError) return csrfError;
 
-  if (!isCsharpEnabled()) {
-    return NextResponse.json({ success: false, error: 'C# сейчас выключен' }, { status: 404 });
-  }
-
   try {
-    const limit = await checkCsharpCheckRateLimit(getClientIP(request));
+    const body = await request.json().catch(() => null);
+    const language = body?.language;
+    if (!isTypedLanguage(language)) {
+      return NextResponse.json(
+        { success: false, error: 'Проверка на сервере есть только для JavaScript и C#' },
+        { status: 400 }
+      );
+    }
+    if (!isLanguageEnabled(language)) {
+      return NextResponse.json(
+        { success: false, error: `${LANGUAGE_LABELS[language]} сейчас выключен` },
+        { status: 404 }
+      );
+    }
+
+    const limit = await checkServerCheckRateLimit(getClientIP(request), language);
     if (!limit.allowed) {
       return NextResponse.json(
         {
@@ -32,14 +45,13 @@ export async function POST(
       );
     }
 
-    const { slug } = await params;
-    const body = await request.json().catch(() => null);
     const code = body?.code;
     if (!code || typeof code !== 'string') {
       return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 });
     }
 
-    const result = await checkCsharpDraft(slug, code);
+    const { slug } = await params;
+    const result = await checkTypedDraft(language, slug, code);
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     if (error instanceof CsharpBusyError) {
@@ -48,7 +60,7 @@ export async function POST(
         { status: 503, headers: { 'Retry-After': '30' } }
       );
     }
-    console.error('Error checking C# solution:', error);
+    console.error('Error checking solution on server:', error);
     return NextResponse.json({ success: false, error: 'Не удалось проверить решение' }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import type { Language } from '@/lib/languages';
 
 // Базовый хук для GET запросов
 export function useApi<T>(url: string | null, options?: { enabled?: boolean }) {
@@ -164,10 +165,14 @@ export interface UserProfile {
   totalSubmissions: number;
   bestRank: number | null;
   charsSaved: number;
+  // Очки, задачи и место в рейтинге каждого языка
+  languageStats: Array<{ language: Language; points: number; tasksSolved: number; rank: number | null }>;
+  // По записи на каждый язык, на котором задача решена
   solvedTasks: Array<{
     slug: string;
     title: string;
     tier: 'bronze' | 'silver' | 'gold';
+    language: Language;
     length: number;
     firstLength: number | null;
     improveCount: number;

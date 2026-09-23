@@ -19,6 +19,7 @@ import {
   Scissors,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { DEFAULT_LANGUAGE, type Language } from '@/lib/languages';
 
 interface TaskTabsProps {
   leaderboard: LeaderboardEntry[];
@@ -26,6 +27,8 @@ interface TaskTabsProps {
   refreshKey?: number;
   currentUserRank?: number;
   isLoggedIn?: boolean;
+  // Таблица, решения и попытки — на этом языке
+  language?: Language;
 }
 
 interface SolutionEntry {
@@ -75,6 +78,7 @@ export function TaskTabs({
   refreshKey,
   currentUserRank,
   isLoggedIn = false,
+  language = DEFAULT_LANGUAGE,
 }: TaskTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('leaderboard');
   const [solutions, setSolutions] = useState<SolutionEntry[]>([]);
@@ -90,7 +94,7 @@ export function TaskTabs({
     const fetchSolutions = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/tasks/${taskSlug}/solutions`);
+        const res = await fetch(`/api/tasks/${taskSlug}/solutions?lang=${language}`, { cache: 'no-store' });
         const json = await res.json();
 
         if (!isMounted) return;
@@ -121,7 +125,7 @@ export function TaskTabs({
     return () => {
       isMounted = false;
     };
-  }, [taskSlug, refreshKey]);
+  }, [taskSlug, refreshKey, language]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -135,7 +139,7 @@ export function TaskTabs({
     const fetchHistory = async () => {
       setHistoryLoading(true);
       try {
-        const res = await fetch(`/api/tasks/${taskSlug}/submissions`, { cache: 'no-store' });
+        const res = await fetch(`/api/tasks/${taskSlug}/submissions?lang=${language}`, { cache: 'no-store' });
         const json = await res.json();
 
         if (!isMounted) return;
@@ -164,7 +168,7 @@ export function TaskTabs({
     return () => {
       isMounted = false;
     };
-  }, [taskSlug, refreshKey, isLoggedIn]);
+  }, [taskSlug, refreshKey, isLoggedIn, language]);
 
   const tabs = [
     { id: 'leaderboard' as const, label: 'Лидерборд', icon: Trophy },

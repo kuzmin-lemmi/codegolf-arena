@@ -1,7 +1,8 @@
 // src/app/api/leaderboard/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { parseRatingScope } from '@/lib/languages';
+import { getRating } from '@/lib/ratings';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,38 +11,8 @@ export async function GET(request: NextRequest) {
     const parsed = rawLimit ? Number.parseInt(rawLimit, 10) : NaN;
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 100) : 50;
 
-    // Получаем пользователей, отсортированных по очкам
-    const users = await prisma.user.findMany({
-      where: {
-        totalPoints: { gt: 0 }, // Только с очками
-      },
-      orderBy: {
-        totalPoints: 'desc',
-      },
-      take: limit,
-      select: {
-        id: true,
-        nickname: true,
-        displayName: true,
-        avatarUrl: true,
-        totalPoints: true,
-        _count: {
-          select: {
-            bestSubmissions: true,
-          },
-        },
-      },
-    });
-
-    const leaderboard = users.map((user, index) => ({
-      rank: index + 1,
-      userId: user.id,
-      nickname: user.nickname || user.displayName,
-      profileSlug: user.nickname || user.id,
-      avatarUrl: user.avatarUrl,
-      points: user.totalPoints,
-      tasksSolved: user._count.bestSubmissions,
-    }));
+    // Общий рейтинг или рейтинг языка: ?lang=python|javascript|csharp
+    const leaderboard = await getRating(parseRatingScope(searchParams.get('lang')), limit);
 
     return NextResponse.json({
       success: true,

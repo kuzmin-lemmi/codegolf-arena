@@ -211,12 +211,8 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Проверяем, что нет решений — ни на Python, ни на C# (проба C#)
-    const [pythonSubmissions, languageSubmissions] = await Promise.all([
-      prisma.submission.count({ where: { taskId: id } }),
-      prisma.languageSubmission.count({ where: { taskId: id } }),
-    ]);
-    const submissions = pythonSubmissions + languageSubmissions;
+    // Проверяем, что нет решений ни на одном языке
+    const submissions = await prisma.submission.count({ where: { taskId: id } });
 
     if (submissions > 0) {
       return NextResponse.json(

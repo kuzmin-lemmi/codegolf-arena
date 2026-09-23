@@ -4,53 +4,43 @@ import { Trophy, Medal, TrendingUp } from 'lucide-react';
 import { Card, Avatar } from '@/components/ui';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
-import { prisma } from '@/lib/db';
 import { cn } from '@/lib/utils';
+import { getEnabledLanguages } from '@/lib/language-settings';
+import { LANGUAGE_LABELS, parseRatingScope, type RatingScope } from '@/lib/languages';
+import { getRating } from '@/lib/ratings';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Рейтинг — Арена однострочников',
-  description: 'Глобальный рейтинг участников по очкам прогресса',
+  // Название сайта к заголовку добавляет шаблон в layout.tsx
+  title: 'Рейтинг',
+  description: 'Рейтинг участников по очкам: общий и отдельно по Python, JavaScript и C#',
   alternates: {
     canonical: '/leaderboard',
   },
 };
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
-async function getLeaderboard() {
+async function getLeaderboard(scope: RatingScope) {
   try {
-    const users = await prisma.user.findMany({
-      where: { totalPoints: { gt: 0 } },
-      orderBy: { totalPoints: 'desc' },
-      take: 50,
-      select: {
-        id: true,
-        nickname: true,
-        displayName: true,
-        avatarUrl: true,
-        totalPoints: true,
-        _count: { select: { bestSubmissions: true } },
-      },
-    });
-
-    return users.map((user, index) => ({
-      rank: index + 1,
-      userId: user.id,
-      nickname: user.nickname || user.displayName,
-      profileSlug: user.nickname || user.id,
-      avatarUrl: user.avatarUrl,
-      points: user.totalPoints,
-      tasksSolved: user._count.bestSubmissions,
-    }));
+    return await getRating(scope, 50);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return [];
   }
 }
 
-export default async function LeaderboardPage() {
-  const leaderboard = await getLeaderboard();
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>;
+}) {
+  const languages = getEnabledLanguages();
+  const requested = parseRatingScope((await searchParams).lang);
+  const scope: RatingScope = requested === 'all' || languages.includes(requested) ? requested : 'all';
+  const leaderboard = await getLeaderboard(scope);
+  const scopes: RatingScope[] = ['all', ...languages];
+  const scopeTitle = scope === 'all' ? 'Общий рейтинг' : `Рейтинг ${LANGUAGE_LABELS[scope]}`;
 
   return (
     <div className="min-h-screen">
@@ -62,8 +52,29 @@ export default async function LeaderboardPage() {
             Рейтинг
           </h1>
           <p className="text-text-secondary">
-            Глобальный рейтинг по очкам прогресса
+            {scope === 'all'
+              ? 'Очки за все языки вместе. Решил задачу на Python и на JavaScript — очки за оба'
+              : `Очки, заработанные на ${LANGUAGE_LABELS[scope]}`}
           </p>
+          {scopes.length > 1 && (
+            <nav aria-label="Рейтинги" className="mt-5 flex flex-wrap gap-2">
+              {scopes.map((item) => (
+                <Link
+                  key={item}
+                  href={item === 'all' ? '/leaderboard' : `/leaderboard?lang=${item}`}
+                  aria-current={item === scope ? 'page' : undefined}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                    item === scope
+                      ? 'bg-accent-blue/15 text-accent-blue border-accent-blue/40'
+                      : 'text-text-secondary border-border hover:text-text-primary'
+                  )}
+                >
+                  {item === 'all' ? 'Общий' : LANGUAGE_LABELS[item]}
+                </Link>
+              ))}
+            </nav>
+          )}
         </div>
       </div>
 
@@ -71,7 +82,7 @@ export default async function LeaderboardPage() {
         {leaderboard.length === 0 ? (
           <Card padding="lg" className="text-center">
             <Trophy className="w-16 h-16 mx-auto text-text-muted mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Рейтинг пока пуст</h2>
+            <h2 className="text-xl font-semibold mb-2">{scopeTitle}: пока пусто</h2>
             <p className="text-text-secondary mb-4">
               Станьте первым участником — решите любую задачу и получите очки.
             </p>
@@ -196,8 +207,10 @@ export default async function LeaderboardPage() {
                   <PointRule label="Стал #1 по задаче" points="+25" highlight />
                 </div>
                 <p className="text-xs text-text-muted mt-4">
-                  За улучшения по одной задаче можно получить не больше 20 (Bronze), 40 (Silver) и
-                  60 (Gold) очков, а бонус за первое место даётся один раз на задачу.{' '}
+                  Очки начисляются на каждом языке отдельно: у каждой задачи своя таблица рекордов
+                  для Python, JavaScript и C#. За улучшения по одной задаче на одном языке можно
+                  получить не больше 20 (Bronze), 40 (Silver) и 60 (Gold) очков, а бонус за первое
+                  место даётся один раз на задачу и язык.{' '}
                   <Link href="/rules" className="text-accent-blue hover:underline">
                     Подробнее
                   </Link>

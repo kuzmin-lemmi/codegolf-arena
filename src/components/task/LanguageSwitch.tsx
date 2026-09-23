@@ -1,25 +1,21 @@
 // src/components/task/LanguageSwitch.tsx
-// Переключатель языка решения на странице задачи. Показывается только у задач,
-// открытых для C# (проба C#, docs/csharp-trial.md).
+// Переключатель языка решения на странице задачи. Показывает только языки,
+// на которых задачу можно решать (Python — всегда).
 
 'use client';
 
 import { cn } from '@/lib/utils';
-
-export type SolutionLanguage = 'python' | 'csharp';
-
-const OPTIONS: Array<{ id: SolutionLanguage; label: string; badge?: string }> = [
-  { id: 'python', label: 'Python' },
-  { id: 'csharp', label: 'C#', badge: 'проба' },
-];
+import { LANGUAGE_LABELS, type Language } from '@/lib/languages';
 
 export function LanguageSwitch({
+  languages,
   value,
   onChange,
   disabled = false,
 }: {
-  value: SolutionLanguage;
-  onChange: (language: SolutionLanguage) => void;
+  languages: Language[];
+  value: Language;
+  onChange: (language: Language) => void;
   disabled?: boolean;
 }) {
   return (
@@ -28,16 +24,16 @@ export function LanguageSwitch({
       aria-label="Язык решения"
       className="inline-flex rounded-lg border border-border bg-background-tertiary/60 p-0.5"
     >
-      {OPTIONS.map((option) => {
-        const active = option.id === value;
+      {languages.map((language) => {
+        const active = language === value;
         return (
           <button
-            key={option.id}
+            key={language}
             type="button"
             role="radio"
             aria-checked={active}
             disabled={disabled}
-            onClick={() => onChange(option.id)}
+            onClick={() => onChange(language)}
             className={cn(
               'px-3 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50',
               active
@@ -45,10 +41,7 @@ export function LanguageSwitch({
                 : 'text-text-secondary hover:text-text-primary'
             )}
           >
-            {option.label}
-            {option.badge && (
-              <span className="ml-1.5 text-[10px] uppercase tracking-wide text-accent-blue">{option.badge}</span>
-            )}
+            {LANGUAGE_LABELS[language]}
           </button>
         );
       })}

@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, Trophy, Users } from 'lucide-react';
 import { Button, Card, TierBadge } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { cn, pluralizeRu } from '@/lib/utils';
 import { TaskTier } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { topicLabel } from '@/lib/task-topics';
+import { LANGUAGE_LABELS, type Language } from '@/lib/languages';
 
 interface TaskListItem {
   id: string;
@@ -20,8 +21,10 @@ interface TaskListItem {
   topics: string[];
   createdAt: Date | string;
   participantsCount: number;
-  bestLength: number | null;
-  hasCsharp?: boolean;
+  // Лучшая длина на каждом языке: длины разных языков между собой не сравниваем
+  bests: Partial<Record<Language, number>>;
+  // На каких языках задачу можно решать
+  languages: Language[];
 }
 
 interface TasksPageClientProps {
@@ -103,10 +106,11 @@ export function TasksPageClient({ tasks, tierCounts }: TasksPageClientProps) {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
       if (sortMode === 'records') {
-        if (a.bestLength === null && b.bestLength === null) return 0;
-        if (a.bestLength === null) return 1;
-        if (b.bestLength === null) return -1;
-        return a.bestLength - b.bestLength;
+        // «С рекордами»: сначала задачи с рекордами на большем числе языков
+        const aCount = Object.keys(a.bests).length;
+        const bCount = Object.keys(b.bests).length;
+        if (aCount !== bCount) return bCount - aCount;
+        return b.participantsCount - a.participantsCount;
       }
       return b.participantsCount - a.participantsCount;
     });
@@ -260,14 +264,15 @@ function TaskCard({ task, solved }: { task: TaskListItem; solved: boolean }) {
                 Турнир
               </span>
             )}
-            {task.hasCsharp && (
+            {task.languages.map((language) => (
               <span
-                className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30"
-                title="Задачу можно решать и на C# (проба)"
+                key={language}
+                className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/25"
+                title={`Задачу можно решать на ${LANGUAGE_LABELS[language]}`}
               >
-                + C#
+                {LANGUAGE_LABELS[language]}
               </span>
-            )}
+            ))}
           </div>
           <Link
             href={`/task/${task.slug}`}
@@ -304,13 +309,21 @@ function TaskCard({ task, solved }: { task: TaskListItem; solved: boolean }) {
         <div className="flex flex-col gap-2 md:items-end">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <Users className="w-4 h-4" />
-            {task.participantsCount} участников
+            {task.participantsCount}{' '}
+            {pluralizeRu(task.participantsCount, ['участник', 'участника', 'участников'])}
           </div>
-          <div className="text-sm">
-            {task.bestLength ? (
-              <span className="font-mono font-semibold text-accent-green">
-                Лучший: {task.bestLength}
-              </span>
+          <div className="text-sm md:text-right">
+            {Object.keys(task.bests).length > 0 ? (
+              <div className="flex flex-wrap gap-x-3 md:justify-end">
+                {task.languages
+                  .filter((language) => task.bests[language] !== undefined)
+                  .map((language) => (
+                    <span key={language} className="font-mono font-semibold text-accent-green">
+                      <span className="font-sans font-normal text-text-muted">{LANGUAGE_LABELS[language]}:</span>{' '}
+                      {task.bests[language]}
+                    </span>
+                  ))}
+              </div>
             ) : (
               <span className="text-text-muted">Пока нет решений</span>
             )}

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { validateMutationRequest } from '@/lib/security';
+import { getUserLanguageStats } from '@/lib/ratings';
 
 // Получение профиля
 export async function GET(request: NextRequest) {
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     // Получаем лучшее место пользователя
     const bestRank = await getBestRank(user.id);
 
-    // Получаем решённые задачи
+    // Решённые задачи: по записи на каждый язык, на котором задача решена
     const solvedTasks = await prisma.bestSubmission.findMany({
       where: { userId: user.id },
       include: {
@@ -63,11 +64,15 @@ export async function GET(request: NextRequest) {
       orderBy: { achievedAt: 'desc' },
     });
 
+    const languageStats = await getUserLanguageStats(user.id);
+
     return NextResponse.json({
       success: true,
       data: {
         ...user,
-        tasksSolved: user._count.bestSubmissions,
+        // Задач, решённых хотя бы на одном языке
+        tasksSolved: new Set(solvedTasks.map((bs) => bs.taskId)).size,
+        languageStats,
         totalSubmissions: user._count.submissions,
         bestRank,
         charsSaved: solvedTasks.reduce(
@@ -78,6 +83,7 @@ export async function GET(request: NextRequest) {
           slug: bs.task.slug,
           title: bs.task.title,
           tier: bs.task.tier,
+          language: bs.language,
           length: bs.codeLength,
           firstLength: bs.firstLength,
           improveCount: bs.improveCount,
@@ -198,17 +204,18 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// Вспомогательная функция: лучшее место пользователя
+// Вспомогательная функция: лучшее место пользователя в таблицах задач
+// (у каждой задачи своя таблица на каждом языке)
 async function getBestRank(userId: string): Promise<number | null> {
-  // Один запрос вместо N+1: rank по каждой задаче и min(rank) для пользователя
+  // Один запрос вместо N+1: rank по каждой задаче и языку и min(rank) для пользователя
   const rows = await prisma.$queryRaw<Array<{ bestRank: number | null }>>`
     SELECT MIN(rnk) AS "bestRank"
     FROM (
       SELECT
         user_id,
         ROW_NUMBER() OVER (
-          PARTITION BY task_id
-          ORDER BY code_length ASC, achieved_at ASC
+          PARTITION BY task_id, language
+          ORDER BY code_length ASC, achieved_at ASC, user_id ASC
         ) AS rnk
       FROM best_submissions
     ) ranked
