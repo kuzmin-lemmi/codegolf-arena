@@ -1,8 +1,9 @@
-// Ставит в раннер Piston нужные языки: Python и C# (mono, проба C#).
+// Ставит в раннер Piston нужные языки: Python, JavaScript (Node.js) и C# (mono).
 // Свежий контейнер приходит пустым: пока пакета нет, любой запуск кода падает.
 // Версия Python должна совпадать с PISTON_PYTHON_VERSION в src/lib/piston.ts
 // и с Python в браузере (Pyodide 0.24.1 = Python 3.11).
-// Версия mono — с CSHARP_PISTON_VERSION в src/lib/csharp-runner.ts.
+// Версия mono — с CSHARP_PISTON_VERSION в src/lib/csharp-runner.ts,
+// версия Node.js — с JS_PISTON_VERSION в src/lib/js-runner.ts.
 // Запуск: npm run dev:piston
 const BASE = process.env.PISTON_API_URL || 'http://127.0.0.1:2000/api/v2';
 
@@ -14,6 +15,8 @@ const RUNTIMES = [
     language: 'python',
     version: process.env.PISTON_PYTHON_VERSION || '3.11.0',
   },
+  // Пакет называется node, а в /runtimes появляется как javascript
+  { title: 'JavaScript (Node.js)', package: 'node', language: 'javascript', version: '20.11.1' },
   // Пакет называется mono, а в /runtimes появляется как csharp (и basic)
   { title: 'C# (mono)', package: 'mono', language: 'csharp', version: '6.12.0' },
 ];
