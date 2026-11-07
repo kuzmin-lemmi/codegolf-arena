@@ -10,9 +10,9 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   // Название сайта к заголовку добавляет шаблон в layout.tsx
-  title: 'Задачи',
+  title: 'Задачи по кодгольфу на Python, JavaScript и C#',
   description:
-    'Задачи для однострочников на Python, JavaScript и C#. Bronze, Silver, Gold уровни сложности.',
+    'Каталог задач для решений в одну строку на Python, JavaScript и C#. Выбирай тему и сложность, проверяй решения и соревнуйся за самый короткий код.',
   alternates: {
     canonical: '/tasks',
   },

@@ -15,6 +15,16 @@ export const metadata: Metadata = {
   },
 };
 
+const website = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Арена однострочников',
+  alternateName: ['Codegolf Arena', 'codegolf.ru'],
+  url: new URL('/', process.env.NEXT_PUBLIC_BASE_URL || 'https://codegolf.ru').toString(),
+  description: 'Задачи и соревнования по кодгольфу на Python, JavaScript и C#. Решай задачи в одну строку и соревнуйся за самый короткий код.',
+  inLanguage: 'ru',
+};
+
 export const revalidate = 60; // Revalidate every 60 seconds
 
 async function getHomePageData() {
@@ -182,6 +192,10 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(website).replace(/</g, '\u003c') }}
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background-secondary via-background to-background">
         <div className="hero-radial absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-blue/12 via-transparent to-transparent" />

@@ -20,7 +20,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border bg-background-secondary/60 mt-auto">
+    <footer data-nosnippet="" className="border-t border-border bg-background-secondary/60 mt-auto">
       <div className="container mx-auto px-4 py-10">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] items-center">
           {/* Logo & Copyright */}
