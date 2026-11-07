@@ -7,7 +7,7 @@ import { Footer } from '@/components/layout/Footer';
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://codegolf.ru'),
   title: {
     default: 'Арена однострочников — код-гольф на Python, JavaScript и C#',
     template: '%s — Арена однострочников',
